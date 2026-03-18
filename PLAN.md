@@ -55,6 +55,7 @@
 - `Repository` means a persistence boundary. It is infrastructure, not a domain entity.
 - `Mirror` means the managed local clone of a `Source`. It is not the source itself.
 - Clone and pull behavior should live in a source refresh service, not on `Source`.
+- `Refresher` means the service that materializes or updates `Mirror` instances from their upstream `Source` definitions.
 - Provider-specific parsing should live behind source package helpers. We do not need parser interfaces until we have more than one real provider.
 - `Skill` means one discovered skill directory under a mirrored source subtree.
 - `Skills` means the normalized collection of discovered skills.
@@ -136,7 +137,7 @@ Package rule:
 - [x] Clarify the catalog slice domain language and entity responsibilities.
 - [x] Initialize the Go module in `skill-switcher-v2/`.
 - [x] Add a small `cmd/skill-switcher` entrypoint that only wires dependencies.
-- [ ] Build the shared application layer with no CLI/TUI imports.
+- [x] Build the shared application layer with no CLI/TUI imports.
 - [x] Move source parsing and source persistence into their own package.
 - [x] Move catalog discovery into its own package.
 - [ ] Move profile logic into its own package.
