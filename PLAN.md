@@ -1,0 +1,148 @@
+# skill-switcher-v2 plan
+
+## Purpose
+- Rebuild `skill-switcher` from scratch with clearer boundaries, better tests, and code we both understand.
+- Keep the product direction from v1, but treat v1 as a behavior reference rather than something to port file-by-file.
+- Make the codebase good enough to open source.
+
+## Agreed
+- v2 is a rebuild/refactor of v1, not a new product.
+- There must be one UI-independent core for source management, cataloging, profiles, and sync.
+- CLI and TUI are separate entries on top of that core.
+- Package boundaries should be deliberate; we only split packages around real concepts.
+- The code style should take inspiration from `go-fly`.
+- The test style should take inspiration from `go-liga`.
+- `PLAN.md` is the living place for decisions, learnings, and TODOs.
+
+## Collaboration agreement
+- Build v2 in small, understandable slices.
+- Prefer code we can explain in one pass over clever abstractions.
+- When we introduce a new package or abstraction, capture why it exists here.
+- Keep updating this file as we learn more from v1 and from the rewrite.
+- Treat domain language as part of the work, not cleanup for later.
+
+## Working principles
+- Prefer small, cohesive packages over one large `internal` package.
+- Do not let core packages depend on Bubble Tea, CLI formatting, or view models.
+- Keep filesystem, `gh`, `git`, and symlink side effects behind narrow interfaces.
+- Prefer explicit data types and functions over generic plumbing.
+- Prefer domain names over vague infrastructure names like `state` and `store` when a sharper name exists.
+- Keep file versions and JSON schemas in repository code, not in the core entities.
+- Let entities own validation and pure derivations; let services and repositories own side effects.
+- Prefer clear naming over comments.
+- Keep exported APIs small and documented.
+
+## What v1 got right
+- GitHub tree URL sources are a good fit for the problem.
+- Source normalization and explicit file versioning are worth keeping.
+- Path-based skill identity is simple and good enough for now.
+- Symlink sync with owned manifests is the right foundation.
+- Deduplicating adapters that share a root path is a good idea.
+
+## Learnings from v1
+- The current `internal` package does too much orchestration and owns too many concepts.
+- App logic leaks TUI types, which couples the core to one interface.
+- Domain types are duplicated across packages, which creates avoidable mapping code.
+- Names like `state` and `store` are too generic and hide the actual domain boundaries.
+- The TUI model is too large; it should be split into smaller focused pieces once the core API is stable.
+- Pure logic and side effects are mixed too often; v2 should separate planning from mutation where possible.
+- We should optimize for readable code and tests, not fastest possible shipping.
+
+## Domain language
+- `Source` means a configured upstream GitHub tree that can provide skills.
+- `Sources` means the normalized collection of configured sources and owns rules like add, remove, deduplicate, and stable ordering.
+- `Sources` should be a named slice type (`type Sources []Source`) so empty collections stay idiomatic and error returns can use `nil`.
+- `Repository` means a persistence boundary. It is infrastructure, not a domain entity.
+- `Mirror` means the managed local clone of a `Source`. It is not the source itself.
+- Clone and pull behavior should live in a source refresh service, not on `Source`.
+- The same rule should apply in other slices: keep entities pure, keep side effects in explicit services.
+
+## v1 MVP behavior to preserve
+- Manage sources as GitHub tree URLs stored in a versioned JSON file.
+- Generate a stable source ID from the repo, ref, and subtree.
+- Clone or pull each source into a managed local sources directory.
+- Scan the chosen subtree for skill directories that contain `SKILL.md`.
+- Persist a catalog snapshot built from discovered skills.
+- Support multiple profiles with one active profile and persisted selected skills.
+- Sync the active selected skills into supported agent folders with symlinks.
+- Persist sync manifests so later pulls and switches can reconcile existing links.
+- Support both CLI and TUI entrypoints on top of the same core behavior.
+
+## Architecture direction
+- Treat v1 as a behavior reference, not a structural reference.
+- Build a core application layer that exposes use cases such as:
+  - add, remove, and list sources
+  - refresh sources
+  - scan and build the catalog
+  - list and select skills for the active profile
+  - switch profiles
+  - plan and apply sync
+  - inspect current sync state
+- Keep CLI and TUI thin:
+  - CLI parses args, calls the core, and prints text
+  - TUI manages state/rendering, calls the core, and renders view state
+- Return core/domain results from the application layer. CLI and TUI should map those results into presentation-specific models locally.
+- Rebuild the TUI after the core and CLI have made the boundaries real.
+- As we rebuild each slice, we should stop and name the entities before copying behavior from v1.
+
+## First pass package boundaries
+- `cmd/skill-switcher/` - process entrypoint
+- `internal/app/` - orchestration and shared use cases
+- `internal/cli/` - command parsing and text output
+- `internal/tui/` - Bubble Tea program and view models
+- `internal/source/` - `Source`, `Sources`, source repository, local mirrors, and later refresh/update services
+- `internal/catalog/` - skill discovery and catalog snapshots
+- `internal/profile/` - profiles, selection state, persistence
+- `internal/agent/` - supported agent adapters and detection
+- `internal/sync/` - sync planning, manifests, symlink reconciliation
+- `internal/paths/` - runtime paths and XDG locations
+
+Package rule:
+- create a package when the concept has its own model, behavior, and tests
+- otherwise keep it local instead of abstracting early
+
+## Testing style
+- Use `go-fly` as the bar for package shape and focused tests.
+- Use `go-liga` as the bar for helper patterns and assertion quality.
+- Prefer helpers like `newSut`, `newCtx`, and `newDefaultDependencies`.
+- Keep failure cases before happy path.
+- Prefer blackbox package tests where practical.
+- Use temp dirs for filesystem tests and test doubles for `gh`, `git`, and OS interactions.
+- Keep the core heavily unit-tested before spending much time on TUI behavior tests.
+- Done means `go test ./... -race`, `go vet ./...`, `go fmt`, and `goimports` pass.
+
+## Recommended build order
+1. Lock down the v1 behavior we want to keep.
+2. Scaffold the v2 module, paths, and shared test helpers.
+3. Implement source parsing, persistence, and fetch flow.
+4. Implement catalog scanning.
+5. Implement profile and selection state.
+6. Implement agent adapters and sync engine.
+7. Implement application use cases on top.
+8. Implement CLI on top of the core.
+9. Implement TUI on top of the same core.
+10. Polish docs, examples, and OSS readiness.
+
+## TODO
+- [x] Create this living plan document.
+- [x] Review v1 and write down the exact MVP behavior we want to preserve in v2.
+- [x] Decide first-pass v2 package names for the initial slice.
+- [x] Clarify the source slice domain language and entity responsibilities.
+- [x] Initialize the Go module in `skill-switcher-v2/`.
+- [x] Add a small `cmd/skill-switcher` entrypoint that only wires dependencies.
+- [ ] Build the shared application layer with no CLI/TUI imports.
+- [x] Move source parsing and source persistence into their own package.
+- [ ] Move catalog discovery into its own package.
+- [ ] Move profile logic into its own package.
+- [ ] Move agent adapter and sync logic into focused packages.
+- [ ] Implement a first end-to-end CLI flow against the shared core.
+- [ ] Rebuild the TUI on top of the shared core.
+- [ ] Add high-quality package tests across core concepts.
+- [ ] Write README and OSS-facing docs once the structure settles.
+
+## Open questions
+- What should the public repo/module name be when we open source it?
+- Do we keep the full current adapter set from day one, or start with a smaller set and add the rest back?
+- Do we keep GitHub tree URLs as the only source type in the v2 MVP?
+- Should sync continue to apply immediately on profile switch, or should that become an explicit action everywhere?
+- How much of the current TUI UX do we want to preserve versus simplify before rebuilding?
