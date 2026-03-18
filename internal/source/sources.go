@@ -19,7 +19,7 @@ func NewSources(items ...Source) Sources {
 func (s Sources) Add(candidate Source) (Sources, error) {
 	for _, existingSource := range s {
 		if existingSource.ID() == candidate.ID() {
-			return nil, fmt.Errorf("source already exists: %s", candidate.URL())
+			return nil, fmt.Errorf("source already exists: %s", candidate.Locator())
 		}
 	}
 
@@ -39,7 +39,7 @@ func (s Sources) Remove(identifier string) (Sources, Source, error) {
 	removedSource := Source{}
 
 	for candidateIndex, candidateSource := range s {
-		if candidateSource.URL() == normalizedIdentifier || candidateSource.ID() == normalizedIdentifier {
+		if candidateSource.Locator() == normalizedIdentifier || candidateSource.ID() == normalizedIdentifier {
 			index = candidateIndex
 			removedSource = candidateSource
 			break
@@ -74,7 +74,7 @@ func normalizeSources(items Sources) Sources {
 	}
 
 	slices.SortFunc(normalizedItems, func(left Source, right Source) int {
-		return strings.Compare(left.URL(), right.URL())
+		return strings.Compare(left.Locator(), right.Locator())
 	})
 
 	return normalizedItems

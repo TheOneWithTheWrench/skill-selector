@@ -142,7 +142,7 @@ func TestSources(t *testing.T) {
 			sut = newSut(t, repository)
 		)
 
-		_, _, err := sut.RemoveSource(configuredSource.URL())
+		_, _, err := sut.RemoveSource(configuredSource.Locator())
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, expectedErr)

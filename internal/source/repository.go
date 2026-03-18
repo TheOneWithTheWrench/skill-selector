@@ -77,7 +77,7 @@ func (r FileRepository) Save(configuredSources Sources) error {
 	}
 
 	for _, configuredSource := range configuredSources {
-		stored.Sources = append(stored.Sources, fileSource{URL: configuredSource.URL()})
+		stored.Sources = append(stored.Sources, fileSource{URL: configuredSource.Locator()})
 	}
 
 	data, err := json.MarshalIndent(stored, "", "  ")

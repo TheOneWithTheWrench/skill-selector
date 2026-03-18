@@ -80,7 +80,7 @@ func TestSourcesRemove(t *testing.T) {
 			sut            = source.NewSources(rootSource, reviewerSource)
 		)
 
-		got, removedSource, err := sut.Remove(rootSource.URL())
+		got, removedSource, err := sut.Remove(rootSource.Locator())
 
 		require.NoError(t, err)
 		assert.Equal(t, rootSource, removedSource)

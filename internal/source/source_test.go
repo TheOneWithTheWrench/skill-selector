@@ -13,19 +13,17 @@ func TestParse(t *testing.T) {
 		got, err := source.Parse("https://github.com/anthropics/skills/tree/main/skills")
 
 		require.NoError(t, err)
-		assert.Equal(t, "https://github.com/anthropics/skills/tree/main/skills", got.URL())
-		assert.Equal(t, "anthropics", got.Owner())
-		assert.Equal(t, "skills", got.Repo())
+		assert.Equal(t, "https://github.com/anthropics/skills/tree/main/skills", got.Locator())
+		assert.Equal(t, "https://github.com/anthropics/skills.git", got.CloneURL())
 		assert.Equal(t, "main", got.Ref())
 		assert.Equal(t, "skills", got.Subpath())
-		assert.Equal(t, "anthropics/skills", got.RepoSlug())
 	})
 
 	t.Run("trim whitespace before parsing", func(t *testing.T) {
 		got, err := source.Parse("  https://github.com/anthropics/skills/tree/main/skills  ")
 
 		require.NoError(t, err)
-		assert.Equal(t, "https://github.com/anthropics/skills/tree/main/skills", got.URL())
+		assert.Equal(t, "https://github.com/anthropics/skills/tree/main/skills", got.Locator())
 	})
 
 	t.Run("clean subtree path", func(t *testing.T) {

@@ -49,12 +49,13 @@
 - We should optimize for readable code and tests, not fastest possible shipping.
 
 ## Domain language
-- `Source` means a configured upstream GitHub tree that can provide skills.
+- `Source` means a configured upstream skill source with a stable ID, a user-facing locator, a fetch URL, a ref, and a subtree.
 - `Sources` means the normalized collection of configured sources and owns rules like add, remove, deduplicate, and stable ordering.
 - `Sources` should be a named slice type (`type Sources []Source`) so empty collections stay idiomatic and error returns can use `nil`.
 - `Repository` means a persistence boundary. It is infrastructure, not a domain entity.
 - `Mirror` means the managed local clone of a `Source`. It is not the source itself.
 - Clone and pull behavior should live in a source refresh service, not on `Source`.
+- Provider-specific parsing should live behind source package helpers. We do not need parser interfaces until we have more than one real provider.
 - `Skill` means one discovered skill directory under a mirrored source subtree.
 - `Skills` means the normalized collection of discovered skills.
 - `Catalog` means the indexed inventory of discovered skills plus when that inventory was generated.
