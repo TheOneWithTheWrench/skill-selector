@@ -116,6 +116,20 @@ func TestNew(t *testing.T) {
 		assert.Contains(t, err.Error(), "clock required")
 	})
 
+	t.Run("return error when with sync manifest repository option has nil repository", func(t *testing.T) {
+		_, err := app.New(paths.Runtime{}, app.WithSyncManifestRepository(nil))
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "sync manifest repository required")
+	})
+
+	t.Run("return error when with sync targets loader option has nil loader", func(t *testing.T) {
+		_, err := app.New(paths.Runtime{}, app.WithSyncTargetsLoader(nil))
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "sync targets loader required")
+	})
+
 	t.Run("create app with default dependencies", func(t *testing.T) {
 		sut, err := app.New(testRuntime(t))
 

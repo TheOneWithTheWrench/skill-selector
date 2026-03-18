@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 )
 
 // App coordinates core skill-switcher use cases while staying independent of any UI layer.
@@ -18,6 +21,8 @@ type App struct {
 	sourceRefresher   source.Refresher
 	catalogRepository catalog.Repository
 	catalogScanner    CatalogScanner
+	syncManifestRepo  skillsync.ManifestRepository
+	syncTargetsLoader SyncTargetsLoader
 	clock             Clock
 }
 
@@ -32,11 +37,16 @@ type Clock interface {
 	Now() time.Time
 }
 
+// SyncTargetsLoader discovers sync targets from the current environment.
+type SyncTargetsLoader func() ([]skillsync.Target, error)
+
 type options struct {
 	sourceRepository  source.Repository
 	sourceRefresher   source.Refresher
 	catalogRepository catalog.Repository
 	catalogScanner    CatalogScanner
+	syncManifestRepo  skillsync.ManifestRepository
+	syncTargetsLoader SyncTargetsLoader
 	clock             Clock
 }
 
@@ -100,6 +110,30 @@ func WithClock(clock Clock) Option {
 	}
 }
 
+// WithSyncManifestRepository injects sync manifest persistence for tests or alternate storage backends.
+func WithSyncManifestRepository(syncManifestRepo skillsync.ManifestRepository) Option {
+	return func(opts *options) error {
+		if syncManifestRepo == nil {
+			return fmt.Errorf("sync manifest repository required")
+		}
+
+		opts.syncManifestRepo = syncManifestRepo
+		return nil
+	}
+}
+
+// WithSyncTargetsLoader injects sync target discovery for tests or alternate environments.
+func WithSyncTargetsLoader(syncTargetsLoader SyncTargetsLoader) Option {
+	return func(opts *options) error {
+		if syncTargetsLoader == nil {
+			return fmt.Errorf("sync targets loader required")
+		}
+
+		opts.syncTargetsLoader = syncTargetsLoader
+		return nil
+	}
+}
+
 // New wires an App with default dependencies for any components not provided explicitly.
 func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 	opts := options{}
@@ -141,6 +175,21 @@ func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 		opts.catalogScanner = catalog.Scan
 	}
 
+	if opts.syncManifestRepo == nil {
+		syncManifestRepo, err := skillsync.NewDirectoryManifestRepository(runtime.SyncStateDir)
+		if err != nil {
+			return nil, err
+		}
+
+		opts.syncManifestRepo = syncManifestRepo
+	}
+
+	if opts.syncTargetsLoader == nil {
+		opts.syncTargetsLoader = func() ([]skillsync.Target, error) {
+			return nil, nil
+		}
+	}
+
 	if opts.clock == nil {
 		opts.clock = realClock{}
 	}
@@ -151,6 +200,8 @@ func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 		sourceRefresher:   opts.sourceRefresher,
 		catalogRepository: opts.catalogRepository,
 		catalogScanner:    opts.catalogScanner,
+		syncManifestRepo:  opts.syncManifestRepo,
+		syncTargetsLoader: opts.syncTargetsLoader,
 		clock:             opts.clock,
 	}, nil
 }
@@ -276,6 +327,51 @@ func (a *App) RebuildCatalog() (catalog.Catalog, error) {
 	return currentCatalog, errors.Join(allErrors...)
 }
 
+// ListSyncManifests returns the currently persisted sync ownership state.
+func (a *App) ListSyncManifests() ([]skillsync.Manifest, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return nil, err
+	}
+
+	return a.syncManifestRepo.LoadAll()
+}
+
+// SyncSkillRefs reconciles lightweight skill refs across detected sync targets.
+func (a *App) SyncSkillRefs(desired skillref.Refs) (skillsync.Result, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return skillsync.Result{}, err
+	}
+
+	targets, err := a.syncTargetsLoader()
+	if err != nil {
+		return skillsync.Result{}, err
+	}
+
+	manifests, err := a.syncManifestRepo.LoadAll()
+	if err != nil {
+		return skillsync.Result{}, err
+	}
+
+	resolver, err := a.sourceResolver()
+	if err != nil {
+		return skillsync.Result{}, err
+	}
+
+	result, syncErr := skillsync.Run(desired, targets, manifests, resolver)
+	var allErrors []error
+	if syncErr != nil {
+		allErrors = append(allErrors, syncErr)
+	}
+
+	for _, manifest := range result.Manifests {
+		if err := a.syncManifestRepo.Save(manifest); err != nil {
+			allErrors = append(allErrors, err)
+		}
+	}
+
+	return result, errors.Join(allErrors...)
+}
+
 func (a *App) loadMirrors() ([]source.Mirror, error) {
 	configuredSources, err := a.sourceRepository.Load()
 	if err != nil {
@@ -283,6 +379,27 @@ func (a *App) loadMirrors() ([]source.Mirror, error) {
 	}
 
 	return source.NewMirrors(configuredSources, a.paths.SourcesDir)
+}
+
+func (a *App) sourceResolver() (skillsync.Resolver, error) {
+	mirrors, err := a.loadMirrors()
+	if err != nil {
+		return nil, err
+	}
+
+	mirrorIndex := make(map[string]source.Mirror, len(mirrors))
+	for _, mirror := range mirrors {
+		mirrorIndex[mirror.ID()] = mirror
+	}
+
+	return func(ref skillref.Ref) (string, error) {
+		mirror, ok := mirrorIndex[ref.SourceID()]
+		if !ok {
+			return "", os.ErrNotExist
+		}
+
+		return mirror.SkillPath(ref.RelativePath()), nil
+	}, nil
 }
 
 type realClock struct{}
