@@ -55,6 +55,10 @@
 - `Repository` means a persistence boundary. It is infrastructure, not a domain entity.
 - `Mirror` means the managed local clone of a `Source`. It is not the source itself.
 - Clone and pull behavior should live in a source refresh service, not on `Source`.
+- `Skill` means one discovered skill directory under a mirrored source subtree.
+- `Skills` means the normalized collection of discovered skills.
+- `Catalog` means the indexed inventory of discovered skills plus when that inventory was generated.
+- Catalog scanning should live in an explicit scanner service or function, not on `Mirror` or `Source`.
 - The same rule should apply in other slices: keep entities pure, keep side effects in explicit services.
 
 ## v1 MVP behavior to preserve
@@ -91,7 +95,7 @@
 - `internal/cli/` - command parsing and text output
 - `internal/tui/` - Bubble Tea program and view models
 - `internal/source/` - `Source`, `Sources`, source repository, local mirrors, and later refresh/update services
-- `internal/catalog/` - skill discovery and catalog snapshots
+- `internal/catalog/` - `Skill`, `Skills`, `Catalog`, scanning, and catalog repository
 - `internal/profile/` - profiles, selection state, persistence
 - `internal/agent/` - supported agent adapters and detection
 - `internal/sync/` - sync planning, manifests, symlink reconciliation
@@ -128,11 +132,12 @@ Package rule:
 - [x] Review v1 and write down the exact MVP behavior we want to preserve in v2.
 - [x] Decide first-pass v2 package names for the initial slice.
 - [x] Clarify the source slice domain language and entity responsibilities.
+- [x] Clarify the catalog slice domain language and entity responsibilities.
 - [x] Initialize the Go module in `skill-switcher-v2/`.
 - [x] Add a small `cmd/skill-switcher` entrypoint that only wires dependencies.
 - [ ] Build the shared application layer with no CLI/TUI imports.
 - [x] Move source parsing and source persistence into their own package.
-- [ ] Move catalog discovery into its own package.
+- [x] Move catalog discovery into its own package.
 - [ ] Move profile logic into its own package.
 - [ ] Move agent adapter and sync logic into focused packages.
 - [ ] Implement a first end-to-end CLI flow against the shared core.

@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
 )
 
 const repositoryVersion = 1
@@ -84,48 +85,8 @@ func (r FileRepository) Save(configuredSources Sources) error {
 		return fmt.Errorf("encode sources file: %w", err)
 	}
 
-	if err := writeFile(r.path, append(data, '\n'), 0o644); err != nil {
+	if err := fileutil.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write sources file %q: %w", r.path, err)
-	}
-
-	return nil
-}
-
-func writeFile(path string, data []byte, perm os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create directory %q: %w", filepath.Dir(path), err)
-	}
-
-	file, err := os.CreateTemp(filepath.Dir(path), ".skill-switcher-v2-*")
-	if err != nil {
-		return fmt.Errorf("create temp file for %q: %w", path, err)
-	}
-
-	tempPath := file.Name()
-	defer func() {
-		_ = os.Remove(tempPath)
-	}()
-
-	if _, err := file.Write(data); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("write temp file for %q: %w", path, err)
-	}
-
-	if err := file.Sync(); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("sync temp file for %q: %w", path, err)
-	}
-
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("close temp file for %q: %w", path, err)
-	}
-
-	if err := os.Chmod(tempPath, perm); err != nil {
-		return fmt.Errorf("chmod temp file for %q: %w", path, err)
-	}
-
-	if err := os.Rename(tempPath, path); err != nil {
-		return fmt.Errorf("rename temp file for %q: %w", path, err)
 	}
 
 	return nil
