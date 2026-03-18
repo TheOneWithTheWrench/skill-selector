@@ -61,6 +61,10 @@
 - `Skills` means the normalized collection of discovered skills.
 - `Catalog` means the indexed inventory of discovered skills plus when that inventory was generated.
 - Catalog scanning should live in an explicit scanner service or function, not on `Mirror` or `Source`.
+- `SkillRef` means a lightweight reference to a skill by `SourceID` and relative path only; it must not carry remote, catalog, or presentation metadata.
+- `Target` means one sync destination with a root path and link mapping strategy.
+- `Manifest` means the persisted set of `SkillRef`s currently owned by one sync target.
+- Sync should operate on `SkillRef`, not `catalog.Skill`, so profiles can later reuse the same selection model without depending on catalog metadata.
 - The same rule should apply in other slices: keep entities pure, keep side effects in explicit services.
 
 ## v1 MVP behavior to preserve
@@ -98,6 +102,8 @@
 - `internal/tui/` - Bubble Tea program and view models
 - `internal/source/` - `Source`, `Sources`, source repository, local mirrors, and later refresh/update services
 - `internal/catalog/` - `Skill`, `Skills`, `Catalog`, scanning, and catalog repository
+- `internal/skillref/` - lightweight skill references shared by sync and later profiles
+- `internal/sync/` - targets, manifests, reconciliation, and sync persistence
 - `internal/profile/` - profiles, selection state, persistence
 - `internal/agent/` - supported agent adapters and detection
 - `internal/sync/` - sync planning, manifests, symlink reconciliation
@@ -122,10 +128,10 @@ Package rule:
 2. Scaffold the v2 module, paths, and shared test helpers.
 3. Implement source parsing, persistence, and fetch flow.
 4. Implement catalog scanning.
-5. Implement profile and selection state.
-6. Implement agent adapters and sync engine.
-7. Implement application use cases on top.
-8. Implement CLI on top of the core.
+5. Implement sync around lightweight skill references and manifests.
+6. Implement application use cases on top.
+7. Implement CLI on top of the core.
+8. Implement profile and selection state once the sync and selection model is stable.
 9. Implement TUI on top of the same core.
 10. Polish docs, examples, and OSS readiness.
 
@@ -140,9 +146,9 @@ Package rule:
 - [x] Build the shared application layer with no CLI/TUI imports.
 - [x] Move source parsing and source persistence into their own package.
 - [x] Move catalog discovery into its own package.
-- [ ] Move profile logic into its own package.
 - [ ] Move agent adapter and sync logic into focused packages.
 - [ ] Implement a first end-to-end CLI flow against the shared core.
+- [ ] Move profile logic into its own package after the sync and selection model settles.
 - [ ] Rebuild the TUI on top of the shared core.
 - [ ] Add high-quality package tests across core concepts.
 - [ ] Write README and OSS-facing docs once the structure settles.
