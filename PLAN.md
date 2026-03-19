@@ -119,7 +119,10 @@ Package rule:
 - Use `go-fly` as the bar for package shape and focused tests.
 - Use `go-liga` as the bar for helper patterns and assertion quality.
 - Prefer `moq` with a package-local `gen.go` and generated `mocks_test.go` over handwritten mock structs when the dependency is an interface.
-- Prefer helpers like `newSut`, `newCtx`, and `newDefaultDependencies`.
+- Prefer local `dependencies` structs plus helpers like `newSut`, `newCtx`, and `newDefaultDependencies`.
+- Give `newDefaultDependencies` sensible happy-path behavior, then override only the dependency behavior relevant to each test case.
+- Assert on expected `moq` calls explicitly, and assert zero calls for dependencies that should not be touched.
+- Use `require.Len(...Calls(), 1)` before indexing into generated `moq` call records.
 - Keep failure cases before happy path.
 - Prefer blackbox package tests where practical.
 - Use temp dirs for filesystem tests and test doubles for `gh`, `git`, and OS interactions.
