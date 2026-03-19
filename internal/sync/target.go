@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
 // Target is one sync destination with a root path and link mapping strategy.
 type Target struct {
 	adapter  string
 	rootPath string
-	linkPath func(skillref.Ref) string
+	linkPath func(skillidentity.Identity) string
 }
 
 // NewTarget validates a target before it participates in sync reconciliation.
-func NewTarget(adapter string, rootPath string, linkPath func(skillref.Ref) string) (Target, error) {
+func NewTarget(adapter string, rootPath string, linkPath func(skillidentity.Identity) string) (Target, error) {
 	normalizedAdapter := strings.TrimSpace(adapter)
 	if normalizedAdapter == "" {
 		return Target{}, fmt.Errorf("target adapter required")
@@ -48,7 +48,7 @@ func (t Target) RootPath() string {
 	return t.rootPath
 }
 
-// LinkPath returns the destination path for one skill ref on the target.
-func (t Target) LinkPath(ref skillref.Ref) string {
-	return t.linkPath(ref)
+// LinkPath returns the destination path for one skill identity on the target.
+func (t Target) LinkPath(identity skillidentity.Identity) string {
+	return t.linkPath(identity)
 }

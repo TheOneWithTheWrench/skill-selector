@@ -9,7 +9,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 )
@@ -336,8 +336,8 @@ func (a *App) ListSyncManifests() ([]skillsync.Manifest, error) {
 	return a.syncManifestRepo.LoadAll()
 }
 
-// SyncSkillRefs reconciles lightweight skill refs across detected sync targets.
-func (a *App) SyncSkillRefs(desired skillref.Refs) (skillsync.Result, error) {
+// SyncSkillIdentities reconciles lightweight skill identities across detected sync targets.
+func (a *App) SyncSkillIdentities(desired skillidentity.Identities) (skillsync.Result, error) {
 	if err := a.paths.EnsureRuntimeDirs(); err != nil {
 		return skillsync.Result{}, err
 	}
@@ -392,13 +392,13 @@ func (a *App) sourceResolver() (skillsync.Resolver, error) {
 		mirrorIndex[mirror.ID()] = mirror
 	}
 
-	return func(ref skillref.Ref) (string, error) {
-		mirror, ok := mirrorIndex[ref.SourceID()]
+	return func(identity skillidentity.Identity) (string, error) {
+		mirror, ok := mirrorIndex[identity.SourceID()]
 		if !ok {
 			return "", os.ErrNotExist
 		}
 
-		return mirror.SkillPath(ref.RelativePath()), nil
+		return mirror.SkillPath(identity.RelativePath()), nil
 	}, nil
 }
 

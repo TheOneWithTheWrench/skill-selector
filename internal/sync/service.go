@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
 type targetGroup struct {
@@ -16,9 +16,9 @@ type targetGroup struct {
 	Manifest Manifest
 }
 
-// Run reconciles desired skill refs across every target and returns updated manifests.
-func Run(desired skillref.Refs, targets []Target, manifests []Manifest, resolve Resolver) (Result, error) {
-	desired = skillref.NewRefs(desired...)
+// Run reconciles desired skill identities across every target and returns updated manifests.
+func Run(desired skillidentity.Identities, targets []Target, manifests []Manifest, resolve Resolver) (Result, error) {
+	desired = skillidentity.NewIdentities(desired...)
 	targetGroups := groupTargets(targets, manifests)
 
 	var (
@@ -54,8 +54,8 @@ func Run(desired skillref.Refs, targets []Target, manifests []Manifest, resolve 
 	return result, errors.Join(allErrors...)
 }
 
-// SyncTarget reconciles one target against desired refs and the target's last manifest.
-func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve Resolver) (TargetResult, Manifest, error) {
+// SyncTarget reconciles one target against desired identities and the target's last manifest.
+func SyncTarget(desired skillidentity.Identities, target Target, manifest Manifest, resolve Resolver) (TargetResult, Manifest, error) {
 	result := TargetResult{Adapter: target.Adapter()}
 
 	if target.Adapter() == "" {
@@ -75,19 +75,19 @@ func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve
 	}
 
 	manifest = manifest.withAdapter(target.Adapter()).withRootPath(target.RootPath())
-	desired = skillref.NewRefs(desired...)
-	desiredIndex := make(map[string]skillref.Ref, len(desired))
-	for _, ref := range desired {
-		desiredIndex[ref.Key()] = ref
+	desired = skillidentity.NewIdentities(desired...)
+	desiredIndex := make(map[string]skillidentity.Identity, len(desired))
+	for _, identity := range desired {
+		desiredIndex[identity.Key()] = identity
 	}
 
-	var linkedRefs skillref.Refs
-	for _, ref := range desired {
-		sourcePath, err := resolve(ref)
+	var linkedIdentities skillidentity.Identities
+	for _, identity := range desired {
+		sourcePath, err := resolve(identity)
 		if errors.Is(err, os.ErrNotExist) {
-			removed, removeErr := removeOwnedLink(target.LinkPath(ref))
+			removed, removeErr := removeOwnedLink(target.LinkPath(identity))
 			if removeErr != nil {
-				wrapped := fmt.Errorf("remove stale link for missing %q on %q: %w", ref.Key(), target.Adapter(), removeErr)
+				wrapped := fmt.Errorf("remove stale link for missing %q on %q: %w", identity.Key(), target.Adapter(), removeErr)
 				result.Error = wrapped.Error()
 				return result, manifest, wrapped
 			}
@@ -98,16 +98,16 @@ func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve
 			continue
 		}
 		if err != nil {
-			wrapped := fmt.Errorf("resolve source for %q on %q: %w", ref.Key(), target.Adapter(), err)
+			wrapped := fmt.Errorf("resolve source for %q on %q: %w", identity.Key(), target.Adapter(), err)
 			result.Error = wrapped.Error()
 			return result, manifest, wrapped
 		}
 
 		info, err := os.Stat(sourcePath)
 		if errors.Is(err, os.ErrNotExist) {
-			removed, removeErr := removeOwnedLink(target.LinkPath(ref))
+			removed, removeErr := removeOwnedLink(target.LinkPath(identity))
 			if removeErr != nil {
-				wrapped := fmt.Errorf("remove stale link for missing %q on %q: %w", ref.Key(), target.Adapter(), removeErr)
+				wrapped := fmt.Errorf("remove stale link for missing %q on %q: %w", identity.Key(), target.Adapter(), removeErr)
 				result.Error = wrapped.Error()
 				return result, manifest, wrapped
 			}
@@ -128,9 +128,9 @@ func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve
 			return result, manifest, wrapped
 		}
 
-		changed, err := ensureSymlink(sourcePath, target.LinkPath(ref))
+		changed, err := ensureSymlink(sourcePath, target.LinkPath(identity))
 		if err != nil {
-			wrapped := fmt.Errorf("sync %q on %q: %w", ref.Key(), target.Adapter(), err)
+			wrapped := fmt.Errorf("sync %q on %q: %w", identity.Key(), target.Adapter(), err)
 			result.Error = wrapped.Error()
 			return result, manifest, wrapped
 		}
@@ -140,17 +140,17 @@ func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve
 			result.Unchanged++
 		}
 
-		linkedRefs = append(linkedRefs, ref)
+		linkedIdentities = append(linkedIdentities, identity)
 	}
 
-	for _, ref := range manifest.Refs() {
-		if _, ok := desiredIndex[ref.Key()]; ok {
+	for _, identity := range manifest.Identities() {
+		if _, ok := desiredIndex[identity.Key()]; ok {
 			continue
 		}
 
-		removed, err := removeOwnedLink(target.LinkPath(ref))
+		removed, err := removeOwnedLink(target.LinkPath(identity))
 		if err != nil {
-			wrapped := fmt.Errorf("remove stale link for %q on %q: %w", ref.Key(), target.Adapter(), err)
+			wrapped := fmt.Errorf("remove stale link for %q on %q: %w", identity.Key(), target.Adapter(), err)
 			result.Error = wrapped.Error()
 			return result, manifest, wrapped
 		}
@@ -159,7 +159,7 @@ func SyncTarget(desired skillref.Refs, target Target, manifest Manifest, resolve
 		}
 	}
 
-	manifest = manifest.withRefs(linkedRefs)
+	manifest = manifest.withIdentities(linkedIdentities)
 
 	return result, manifest, nil
 }
@@ -196,7 +196,7 @@ func groupTargets(targets []Target, manifests []Manifest) []targetGroup {
 
 		if index, ok := groupIndex[rootKey]; ok {
 			groups[index].Adapters = append(groups[index].Adapters, target.Adapter())
-			groups[index].Manifest = groups[index].Manifest.withRefs(append(groups[index].Manifest.Refs(), manifest.Refs()...))
+			groups[index].Manifest = groups[index].Manifest.withIdentities(append(groups[index].Manifest.Identities(), manifest.Identities()...))
 			continue
 		}
 

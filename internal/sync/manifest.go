@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
-// Manifest is the persisted set of skill refs currently owned by one sync target.
+// Manifest is the persisted set of skill identities currently owned by one sync target.
 type Manifest struct {
-	adapter  string
-	rootPath string
-	refs     skillref.Refs
+	adapter    string
+	rootPath   string
+	identities skillidentity.Identities
 }
 
 // NewManifest constructs normalized sync ownership state for one target adapter.
-func NewManifest(adapter string, rootPath string, refs ...skillref.Ref) (Manifest, error) {
+func NewManifest(adapter string, rootPath string, identities ...skillidentity.Identity) (Manifest, error) {
 	normalizedAdapter := strings.TrimSpace(adapter)
 	if normalizedAdapter == "" {
 		return Manifest{}, fmt.Errorf("manifest adapter required")
@@ -28,9 +28,9 @@ func NewManifest(adapter string, rootPath string, refs ...skillref.Ref) (Manifes
 	}
 
 	return Manifest{
-		adapter:  normalizedAdapter,
-		rootPath: normalizedRootPath,
-		refs:     skillref.NewRefs(refs...),
+		adapter:    normalizedAdapter,
+		rootPath:   normalizedRootPath,
+		identities: skillidentity.NewIdentities(identities...),
 	}, nil
 }
 
@@ -44,9 +44,9 @@ func (m Manifest) RootPath() string {
 	return m.rootPath
 }
 
-// Refs returns the normalized skill refs currently owned by the target.
-func (m Manifest) Refs() skillref.Refs {
-	return append(skillref.Refs(nil), m.refs...)
+// Identities returns the normalized skill identities currently owned by the target.
+func (m Manifest) Identities() skillidentity.Identities {
+	return append(skillidentity.Identities(nil), m.identities...)
 }
 
 func (m Manifest) withRootPath(rootPath string) Manifest {
@@ -59,7 +59,7 @@ func (m Manifest) withRootPath(rootPath string) Manifest {
 	return m
 }
 
-func (m Manifest) withRefs(refs skillref.Refs) Manifest {
-	m.refs = skillref.NewRefs(refs...)
+func (m Manifest) withIdentities(identities skillidentity.Identities) Manifest {
+	m.identities = skillidentity.NewIdentities(identities...)
 	return m
 }

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,26 +13,26 @@ import (
 
 func TestSyncTarget(t *testing.T) {
 	var (
-		newRef = func(t *testing.T, sourceID string, relativePath string) skillref.Ref {
-			ref, err := skillref.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+			identity, err := skillidentity.New(sourceID, relativePath)
 			require.NoError(t, err)
-			return ref
+			return identity
 		}
 		newTarget = func(t *testing.T, adapter string, rootPath string) skillsync.Target {
-			target, err := skillsync.NewTarget(adapter, rootPath, func(ref skillref.Ref) string {
-				return filepath.Join(rootPath, filepath.FromSlash(ref.RelativePath()))
+			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+				return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 			})
 			require.NoError(t, err)
 			return target
 		}
-		newManifest = func(t *testing.T, adapter string, rootPath string, refs ...skillref.Ref) skillsync.Manifest {
-			manifest, err := skillsync.NewManifest(adapter, rootPath, refs...)
+		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+			manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
 			require.NoError(t, err)
 			return manifest
 		}
 		newResolver = func(paths map[string]string) skillsync.Resolver {
-			return func(ref skillref.Ref) (string, error) {
-				path, ok := paths[ref.Key()]
+			return func(identity skillidentity.Identity) (string, error) {
+				path, ok := paths[identity.Key()]
 				if !ok {
 					return "", os.ErrNotExist
 				}
@@ -42,16 +42,16 @@ func TestSyncTarget(t *testing.T) {
 		}
 	)
 
-	t.Run("link desired refs and unlink deselected refs", func(t *testing.T) {
+	t.Run("link desired identities and unlink deselected identities", func(t *testing.T) {
 		var (
-			root           = t.TempDir()
-			sourceRoot     = filepath.Join(root, "sources")
-			targetRoot     = filepath.Join(root, "opencode")
-			desiredRef     = newRef(t, "source", "reviewer")
-			staleRef       = newRef(t, "source", "old-reviewer")
-			desiredSource  = filepath.Join(sourceRoot, "reviewer")
-			staleTarget    = filepath.Join(targetRoot, "old-reviewer")
-			expectedTarget = filepath.Join(targetRoot, "reviewer")
+			root            = t.TempDir()
+			sourceRoot      = filepath.Join(root, "sources")
+			targetRoot      = filepath.Join(root, "opencode")
+			desiredIdentity = newIdentity(t, "source", "reviewer")
+			staleIdentity   = newIdentity(t, "source", "old-reviewer")
+			desiredSource   = filepath.Join(sourceRoot, "reviewer")
+			staleTarget     = filepath.Join(targetRoot, "old-reviewer")
+			expectedTarget  = filepath.Join(targetRoot, "reviewer")
 		)
 
 		require.NoError(t, os.MkdirAll(desiredSource, 0o755))
@@ -59,16 +59,16 @@ func TestSyncTarget(t *testing.T) {
 		require.NoError(t, os.Symlink(filepath.Join(sourceRoot, "gone"), staleTarget))
 
 		result, manifest, err := skillsync.SyncTarget(
-			skillref.Refs{desiredRef},
+			skillidentity.Identities{desiredIdentity},
 			newTarget(t, "opencode", targetRoot),
-			newManifest(t, "opencode", targetRoot, staleRef),
-			newResolver(map[string]string{desiredRef.Key(): desiredSource}),
+			newManifest(t, "opencode", targetRoot, staleIdentity),
+			newResolver(map[string]string{desiredIdentity.Key(): desiredSource}),
 		)
 
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Linked)
 		assert.Equal(t, 1, result.Removed)
-		assert.Equal(t, skillref.Refs{desiredRef}, manifest.Refs())
+		assert.Equal(t, skillidentity.Identities{desiredIdentity}, manifest.Identities())
 
 		linkTarget, err := os.Readlink(expectedTarget)
 		require.NoError(t, err)
@@ -77,17 +77,17 @@ func TestSyncTarget(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 	})
 
-	t.Run("skip missing source refs and keep manifest clean", func(t *testing.T) {
+	t.Run("skip missing source identities and keep manifest clean", func(t *testing.T) {
 		var (
-			root       = t.TempDir()
-			targetRoot = filepath.Join(root, "claude")
-			missingRef = newRef(t, "source", "missing")
+			root            = t.TempDir()
+			targetRoot      = filepath.Join(root, "claude")
+			missingIdentity = newIdentity(t, "source", "missing")
 		)
 
 		require.NoError(t, os.MkdirAll(targetRoot, 0o755))
 
 		result, manifest, err := skillsync.SyncTarget(
-			skillref.Refs{missingRef},
+			skillidentity.Identities{missingIdentity},
 			newTarget(t, "claude", targetRoot),
 			newManifest(t, "claude", targetRoot),
 			newResolver(nil),
@@ -95,20 +95,20 @@ func TestSyncTarget(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Skipped)
-		assert.Nil(t, manifest.Refs())
+		assert.Nil(t, manifest.Identities())
 	})
 }
 
 func TestRun(t *testing.T) {
 	var (
-		newRef = func(t *testing.T, sourceID string, relativePath string) skillref.Ref {
-			ref, err := skillref.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+			identity, err := skillidentity.New(sourceID, relativePath)
 			require.NoError(t, err)
-			return ref
+			return identity
 		}
 		newTarget = func(t *testing.T, adapter string, rootPath string) skillsync.Target {
-			target, err := skillsync.NewTarget(adapter, rootPath, func(ref skillref.Ref) string {
-				return filepath.Join(rootPath, filepath.FromSlash(ref.RelativePath()))
+			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+				return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 			})
 			require.NoError(t, err)
 			return target
@@ -117,12 +117,12 @@ func TestRun(t *testing.T) {
 
 	t.Run("sync all targets and return manifests", func(t *testing.T) {
 		var (
-			root        = t.TempDir()
-			sourceRoot  = filepath.Join(root, "sources")
-			desiredRef  = newRef(t, "source", "reviewer")
-			sourcePath  = filepath.Join(sourceRoot, "reviewer")
-			targetRoot1 = filepath.Join(root, "opencode")
-			targetRoot2 = filepath.Join(root, "claude")
+			root            = t.TempDir()
+			sourceRoot      = filepath.Join(root, "sources")
+			desiredIdentity = newIdentity(t, "source", "reviewer")
+			sourcePath      = filepath.Join(sourceRoot, "reviewer")
+			targetRoot1     = filepath.Join(root, "opencode")
+			targetRoot2     = filepath.Join(root, "claude")
 		)
 
 		require.NoError(t, os.MkdirAll(sourcePath, 0o755))
@@ -130,14 +130,14 @@ func TestRun(t *testing.T) {
 		require.NoError(t, os.MkdirAll(targetRoot2, 0o755))
 
 		result, err := skillsync.Run(
-			skillref.Refs{desiredRef},
+			skillidentity.Identities{desiredIdentity},
 			[]skillsync.Target{
 				newTarget(t, "claude", targetRoot2),
 				newTarget(t, "opencode", targetRoot1),
 			},
 			nil,
-			func(ref skillref.Ref) (string, error) {
-				if ref.Key() != desiredRef.Key() {
+			func(identity skillidentity.Identity) (string, error) {
+				if identity.Key() != desiredIdentity.Key() {
 					return "", os.ErrNotExist
 				}
 
@@ -155,26 +155,26 @@ func TestRun(t *testing.T) {
 
 	t.Run("deduplicate targets that share the same root path", func(t *testing.T) {
 		var (
-			root       = t.TempDir()
-			sourceRoot = filepath.Join(root, "sources")
-			desiredRef = newRef(t, "source", "reviewer")
-			sourcePath = filepath.Join(sourceRoot, "reviewer")
-			sharedRoot = filepath.Join(root, "agents", "skills")
+			root            = t.TempDir()
+			sourceRoot      = filepath.Join(root, "sources")
+			desiredIdentity = newIdentity(t, "source", "reviewer")
+			sourcePath      = filepath.Join(sourceRoot, "reviewer")
+			sharedRoot      = filepath.Join(root, "agents", "skills")
 		)
 
 		require.NoError(t, os.MkdirAll(sourcePath, 0o755))
 		require.NoError(t, os.MkdirAll(sharedRoot, 0o755))
 
 		result, err := skillsync.Run(
-			skillref.Refs{desiredRef},
+			skillidentity.Identities{desiredIdentity},
 			[]skillsync.Target{
 				newTarget(t, "ampcode", sharedRoot),
 				newTarget(t, "codex", sharedRoot),
 				newTarget(t, "cursor", sharedRoot),
 			},
 			nil,
-			func(ref skillref.Ref) (string, error) {
-				if ref.Key() != desiredRef.Key() {
+			func(identity skillidentity.Identity) (string, error) {
+				if identity.Key() != desiredIdentity.Key() {
 					return "", os.ErrNotExist
 				}
 

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,13 +28,13 @@ func TestDirectoryManifestRepository(t *testing.T) {
 			require.NoError(t, err)
 			return repository, dir
 		}
-		newRef = func(t *testing.T, sourceID string, relativePath string) skillref.Ref {
-			ref, err := skillref.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+			identity, err := skillidentity.New(sourceID, relativePath)
 			require.NoError(t, err)
-			return ref
+			return identity
 		}
-		newManifest = func(t *testing.T, adapter string, rootPath string, refs ...skillref.Ref) skillsync.Manifest {
-			manifest, err := skillsync.NewManifest(adapter, rootPath, refs...)
+		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+			manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
 			require.NoError(t, err)
 			return manifest
 		}
@@ -51,11 +51,11 @@ func TestDirectoryManifestRepository(t *testing.T) {
 
 	t.Run("save and load manifests sorted by adapter", func(t *testing.T) {
 		var (
-			repository, _   = newRepository(t)
-			reviewerRef     = newRef(t, "source-a", "reviewer")
-			programmerRef   = newRef(t, "source-b", "programmer")
-			cursorManifest  = newManifest(t, "cursor", "/tmp/cursor", reviewerRef)
-			ampcodeManifest = newManifest(t, "ampcode", "/tmp/ampcode", programmerRef)
+			repository, _      = newRepository(t)
+			reviewerIdentity   = newIdentity(t, "source-a", "reviewer")
+			programmerIdentity = newIdentity(t, "source-b", "programmer")
+			cursorManifest     = newManifest(t, "cursor", "/tmp/cursor", reviewerIdentity)
+			ampcodeManifest    = newManifest(t, "ampcode", "/tmp/ampcode", programmerIdentity)
 		)
 
 		require.NoError(t, repository.Save(cursorManifest))
@@ -67,8 +67,8 @@ func TestDirectoryManifestRepository(t *testing.T) {
 		require.Len(t, got, 2)
 		assert.Equal(t, "ampcode", got[0].Adapter())
 		assert.Equal(t, "cursor", got[1].Adapter())
-		assert.Equal(t, skillref.Refs{programmerRef}, got[0].Refs())
-		assert.Equal(t, skillref.Refs{reviewerRef}, got[1].Refs())
+		assert.Equal(t, skillidentity.Identities{programmerIdentity}, got[0].Identities())
+		assert.Equal(t, skillidentity.Identities{reviewerIdentity}, got[1].Identities())
 	})
 
 	t.Run("support legacy agent field when loading manifest", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestDirectoryManifestRepository(t *testing.T) {
 		require.Len(t, got, 1)
 		assert.Equal(t, "opencode", got[0].Adapter())
 		assert.Equal(t, "/tmp/opencode/skills", got[0].RootPath())
-		require.Len(t, got[0].Refs(), 1)
-		assert.Equal(t, "source", got[0].Refs()[0].SourceID())
+		require.Len(t, got[0].Identities(), 1)
+		assert.Equal(t, "source", got[0].Identities()[0].SourceID())
 	})
 }

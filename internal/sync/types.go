@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
-// Resolver translates a skill ref into its local source directory.
-type Resolver func(skillref.Ref) (string, error)
+// Resolver translates a skill identity into its local source directory.
+type Resolver func(skillidentity.Identity) (string, error)
 
 // Result is the full reconciliation report across all sync targets.
 type Result struct {

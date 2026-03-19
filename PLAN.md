@@ -61,10 +61,10 @@
 - `Skills` means the normalized collection of discovered skills.
 - `Catalog` means the indexed inventory of discovered skills plus when that inventory was generated.
 - Catalog scanning should live in an explicit scanner service or function, not on `Mirror` or `Source`.
-- `SkillRef` means a lightweight reference to a skill by `SourceID` and relative path only; it must not carry remote, catalog, or presentation metadata.
+- `SkillIdentity` means a lightweight identity for a skill by `SourceID` and relative path only; it must not carry remote, catalog, or presentation metadata.
 - `Target` means one sync destination with a root path and link mapping strategy.
-- `Manifest` means the persisted set of `SkillRef`s currently owned by one sync target.
-- Sync should operate on `SkillRef`, not `catalog.Skill`, so profiles can later reuse the same selection model without depending on catalog metadata.
+- `Manifest` means the persisted set of `SkillIdentity` values currently owned by one sync target.
+- Sync should operate on `SkillIdentity`, not `catalog.Skill`, so profiles can later reuse the same selection model without depending on catalog metadata.
 - The same rule should apply in other slices: keep entities pure, keep side effects in explicit services.
 
 ## v1 MVP behavior to preserve
@@ -102,11 +102,10 @@
 - `internal/tui/` - Bubble Tea program and view models
 - `internal/source/` - `Source`, `Sources`, source repository, local mirrors, and later refresh/update services
 - `internal/catalog/` - `Skill`, `Skills`, `Catalog`, scanning, and catalog repository
-- `internal/skillref/` - lightweight skill references shared by sync and later profiles
+- `internal/skillidentity/` - lightweight skill identities shared by sync and later profiles
 - `internal/sync/` - targets, manifests, reconciliation, and sync persistence
 - `internal/profile/` - profiles, selection state, persistence
 - `internal/agent/` - supported agent adapters and detection
-- `internal/sync/` - sync planning, manifests, symlink reconciliation
 - `internal/paths/` - runtime paths and XDG locations
 
 Package rule:
@@ -128,7 +127,7 @@ Package rule:
 2. Scaffold the v2 module, paths, and shared test helpers.
 3. Implement source parsing, persistence, and fetch flow.
 4. Implement catalog scanning.
-5. Implement sync around lightweight skill references and manifests.
+5. Implement sync around lightweight skill identities and manifests.
 6. Implement application use cases on top.
 7. Implement CLI on top of the core.
 8. Implement profile and selection state once the sync and selection model is stable.

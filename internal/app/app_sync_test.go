@@ -8,7 +8,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 	"github.com/stretchr/testify/assert"
@@ -65,21 +65,21 @@ func TestListSyncManifests(t *testing.T) {
 	})
 }
 
-func TestSyncSkillRefs(t *testing.T) {
+func TestSyncSkillIdentities(t *testing.T) {
 	var (
 		parseSource = func(t *testing.T, rawURL string) source.Source {
 			configuredSource, err := source.Parse(rawURL)
 			require.NoError(t, err)
 			return configuredSource
 		}
-		newRef = func(t *testing.T, sourceID string, relativePath string) skillref.Ref {
-			ref, err := skillref.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+			identity, err := skillidentity.New(sourceID, relativePath)
 			require.NoError(t, err)
-			return ref
+			return identity
 		}
 		newTarget = func(t *testing.T, adapter string, rootPath string) skillsync.Target {
-			target, err := skillsync.NewTarget(adapter, rootPath, func(ref skillref.Ref) string {
-				return filepath.Join(rootPath, filepath.FromSlash(ref.RelativePath()))
+			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+				return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 			})
 			require.NoError(t, err)
 			return target
@@ -91,7 +91,7 @@ func TestSyncSkillRefs(t *testing.T) {
 		}
 	)
 
-	t.Run("sync refs across detected targets and save manifests", func(t *testing.T) {
+	t.Run("sync identities across detected targets and save manifests", func(t *testing.T) {
 		var (
 			runtime          = testRuntime(t)
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
@@ -99,12 +99,12 @@ func TestSyncSkillRefs(t *testing.T) {
 			manifestRepo     = &syncManifestRepository{}
 			targetRoot       = filepath.Join(t.TempDir(), "opencode")
 			target           = newTarget(t, "opencode", targetRoot)
-			ref              = newRef(t, configuredSource.ID(), "reviewer")
+			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, runtime.SourcesDir)
 		require.NoError(t, err)
-		require.NoError(t, os.MkdirAll(mirror.SkillPath(ref.RelativePath()), 0o755))
+		require.NoError(t, os.MkdirAll(mirror.SkillPath(identity.RelativePath()), 0o755))
 
 		sut := newSut(
 			t,
@@ -116,18 +116,18 @@ func TestSyncSkillRefs(t *testing.T) {
 			}),
 		)
 
-		got, err := sut.SyncSkillRefs(skillref.NewRefs(ref))
+		got, err := sut.SyncSkillIdentities(skillidentity.NewIdentities(identity))
 
 		require.NoError(t, err)
 		require.Len(t, got.Targets, 1)
 		assert.Equal(t, 1, got.Targets[0].Linked)
 		require.Len(t, got.Manifests, 1)
 		require.Len(t, manifestRepo.saveCalls, 1)
-		assert.Equal(t, skillref.NewRefs(ref), manifestRepo.saveCalls[0].Refs())
+		assert.Equal(t, skillidentity.NewIdentities(identity), manifestRepo.saveCalls[0].Identities())
 
 		linkTarget, err := os.Readlink(filepath.Join(targetRoot, "reviewer"))
 		require.NoError(t, err)
-		assert.Equal(t, mirror.SkillPath(ref.RelativePath()), linkTarget)
+		assert.Equal(t, mirror.SkillPath(identity.RelativePath()), linkTarget)
 	})
 
 	t.Run("return target loader error", func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestSyncSkillRefs(t *testing.T) {
 			)
 		)
 
-		_, err := sut.SyncSkillRefs(nil)
+		_, err := sut.SyncSkillIdentities(nil)
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, expectedErr)
@@ -160,12 +160,12 @@ func TestSyncSkillRefs(t *testing.T) {
 			manifestRepo     = &syncManifestRepository{saveErr: expectedErr}
 			targetRoot       = filepath.Join(t.TempDir(), "opencode")
 			target           = newTarget(t, "opencode", targetRoot)
-			ref              = newRef(t, configuredSource.ID(), "reviewer")
+			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, runtime.SourcesDir)
 		require.NoError(t, err)
-		require.NoError(t, os.MkdirAll(mirror.SkillPath(ref.RelativePath()), 0o755))
+		require.NoError(t, os.MkdirAll(mirror.SkillPath(identity.RelativePath()), 0o755))
 
 		sut := newSut(
 			t,
@@ -177,7 +177,7 @@ func TestSyncSkillRefs(t *testing.T) {
 			}),
 		)
 
-		got, err := sut.SyncSkillRefs(skillref.NewRefs(ref))
+		got, err := sut.SyncSkillIdentities(skillidentity.NewIdentities(identity))
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, expectedErr)

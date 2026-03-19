@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillref"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
 const repositoryVersion = 1
@@ -89,13 +89,13 @@ func (r DirectoryManifestRepository) Save(manifest Manifest) error {
 		Version:  repositoryVersion,
 		Adapter:  manifest.Adapter(),
 		RootPath: manifest.RootPath(),
-		Skills:   make([]manifestSkillRef, 0, len(manifest.Refs())),
+		Skills:   make([]manifestSkillRef, 0, len(manifest.Identities())),
 	}
 
-	for _, ref := range manifest.Refs() {
+	for _, identity := range manifest.Identities() {
 		encoded.Skills = append(encoded.Skills, manifestSkillRef{
-			SourceID:     ref.SourceID(),
-			RelativePath: ref.RelativePath(),
+			SourceID:     identity.SourceID(),
+			RelativePath: identity.RelativePath(),
 		})
 	}
 
@@ -128,17 +128,17 @@ func (r DirectoryManifestRepository) load(path string) (Manifest, error) {
 		adapter = strings.TrimSpace(decoded.Agent)
 	}
 
-	refs := make(skillref.Refs, 0, len(decoded.Skills))
+	identities := make(skillidentity.Identities, 0, len(decoded.Skills))
 	for _, item := range decoded.Skills {
-		ref, err := skillref.New(item.SourceID, item.RelativePath)
+		identity, err := skillidentity.New(item.SourceID, item.RelativePath)
 		if err != nil {
 			return Manifest{}, fmt.Errorf("decode sync manifest %q: %w", path, err)
 		}
 
-		refs = append(refs, ref)
+		identities = append(identities, identity)
 	}
 
-	manifest, err := NewManifest(adapter, decoded.RootPath, refs...)
+	manifest, err := NewManifest(adapter, decoded.RootPath, identities...)
 	if err != nil {
 		return Manifest{}, fmt.Errorf("decode sync manifest %q: %w", path, err)
 	}

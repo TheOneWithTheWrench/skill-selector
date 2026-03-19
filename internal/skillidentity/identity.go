@@ -1,4 +1,4 @@
-package skillref
+package skillidentity
 
 import (
 	"fmt"
@@ -6,17 +6,17 @@ import (
 	"strings"
 )
 
-// Ref identifies a skill by source and relative path without carrying catalog metadata.
-type Ref struct {
+// Identity identifies a skill by source and relative path without carrying catalog metadata.
+type Identity struct {
 	sourceID     string
 	relativePath string
 }
 
-// New validates and normalizes a lightweight skill reference.
-func New(sourceID string, relativePath string) (Ref, error) {
+// New validates and normalizes a lightweight skill identity.
+func New(sourceID string, relativePath string) (Identity, error) {
 	normalizedSourceID := strings.TrimSpace(sourceID)
 	if normalizedSourceID == "" {
-		return Ref{}, fmt.Errorf("skill ref source id required")
+		return Identity{}, fmt.Errorf("skill identity source id required")
 	}
 
 	normalizedRelativePath := path.Clean(strings.TrimSpace(relativePath))
@@ -24,26 +24,26 @@ func New(sourceID string, relativePath string) (Ref, error) {
 		normalizedRelativePath = ""
 	}
 	if normalizedRelativePath == ".." || strings.HasPrefix(normalizedRelativePath, "../") || strings.HasPrefix(normalizedRelativePath, "/") {
-		return Ref{}, fmt.Errorf("skill ref path must stay within the source subtree: %q", relativePath)
+		return Identity{}, fmt.Errorf("skill identity path must stay within the source subtree: %q", relativePath)
 	}
 
-	return Ref{
+	return Identity{
 		sourceID:     normalizedSourceID,
 		relativePath: normalizedRelativePath,
 	}, nil
 }
 
 // SourceID returns the source that owns the referenced skill.
-func (r Ref) SourceID() string {
-	return r.sourceID
+func (i Identity) SourceID() string {
+	return i.sourceID
 }
 
 // RelativePath returns the skill path relative to the source subtree.
-func (r Ref) RelativePath() string {
-	return r.relativePath
+func (i Identity) RelativePath() string {
+	return i.relativePath
 }
 
 // Key returns the stable string form used for deduplication and indexing.
-func (r Ref) Key() string {
-	return r.sourceID + ":" + r.relativePath
+func (i Identity) Key() string {
+	return i.sourceID + ":" + i.relativePath
 }
