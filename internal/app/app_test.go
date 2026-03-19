@@ -12,6 +12,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,57 +90,28 @@ func (c clock) Now() time.Time {
 }
 
 func TestNew(t *testing.T) {
-	t.Run("return error when with source repository option has nil repository", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithSourceRepository(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "source repository required")
-	})
-
-	t.Run("return error when with source refresher option has nil refresher", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithSourceRefresher(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "source refresher required")
-	})
-
-	t.Run("return error when with catalog repository option has nil repository", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithCatalogRepository(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "catalog repository required")
-	})
-
-	t.Run("return error when with catalog scanner option has nil scanner", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithCatalogScanner(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "catalog scanner required")
-	})
-
-	t.Run("return error when with clock option has nil clock", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithClock(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "clock required")
-	})
-
-	t.Run("return error when with sync manifest repository option has nil repository", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithSyncManifestRepository(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "sync manifest repository required")
-	})
-
-	t.Run("return error when with sync targets loader option has nil loader", func(t *testing.T) {
-		_, err := app.New(paths.Runtime{}, app.WithSyncTargetsLoader(nil))
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "sync targets loader required")
-	})
-
 	t.Run("create app with default dependencies", func(t *testing.T) {
 		sut, err := app.New(testRuntime(t))
+
+		require.NoError(t, err)
+		require.NotNil(t, sut)
+	})
+
+	t.Run("create app with injected dependencies", func(t *testing.T) {
+		sut, err := app.New(
+			testRuntime(t),
+			app.WithSourceRepository(&sourceRepository{}),
+			app.WithSourceRefresher(&sourceRefresher{}),
+			app.WithCatalogRepository(&catalogRepository{}),
+			app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
+				return nil, nil
+			}),
+			app.WithSyncManifestRepository(&syncManifestRepository{}),
+			app.WithSyncTargetsLoader(func() ([]skillsync.Target, error) {
+				return nil, nil
+			}),
+			app.WithClock(clock{now: time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)}),
+		)
 
 		require.NoError(t, err)
 		require.NotNil(t, sut)

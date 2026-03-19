@@ -28,7 +28,7 @@ type App struct {
 }
 
 // Option injects optional dependencies during App construction.
-type Option func(*options) error
+type Option func(*options)
 
 // CatalogScanner discovers skills inside one mirrored source subtree.
 type CatalogScanner func(source.Mirror) (catalog.Skills, error)
@@ -59,144 +59,62 @@ type options struct {
 
 // WithSourceRepository injects custom source persistence for tests or alternate storage backends.
 func WithSourceRepository(sourceRepository source.Repository) Option {
-	return func(opts *options) error {
-		if sourceRepository == nil {
-			return fmt.Errorf("source repository required")
-		}
-
+	return func(opts *options) {
 		opts.sourceRepository = sourceRepository
-		return nil
 	}
 }
 
 // WithSourceRefresher injects mirror refresh behavior for tests or alternate fetch strategies.
 func WithSourceRefresher(sourceRefresher source.Refresher) Option {
-	return func(opts *options) error {
-		if sourceRefresher == nil {
-			return fmt.Errorf("source refresher required")
-		}
-
+	return func(opts *options) {
 		opts.sourceRefresher = sourceRefresher
-		return nil
 	}
 }
 
 // WithCatalogRepository injects catalog persistence for tests or alternate storage backends.
 func WithCatalogRepository(catalogRepository catalog.Repository) Option {
-	return func(opts *options) error {
-		if catalogRepository == nil {
-			return fmt.Errorf("catalog repository required")
-		}
-
+	return func(opts *options) {
 		opts.catalogRepository = catalogRepository
-		return nil
 	}
 }
 
 // WithCatalogScanner injects catalog scanning behavior for tests or alternate discovery strategies.
 func WithCatalogScanner(catalogScanner CatalogScanner) Option {
-	return func(opts *options) error {
-		if catalogScanner == nil {
-			return fmt.Errorf("catalog scanner required")
-		}
-
+	return func(opts *options) {
 		opts.catalogScanner = catalogScanner
-		return nil
 	}
 }
 
 // WithClock injects the time source used when persisting catalog snapshots.
 func WithClock(clock Clock) Option {
-	return func(opts *options) error {
-		if clock == nil {
-			return fmt.Errorf("clock required")
-		}
-
+	return func(opts *options) {
 		opts.clock = clock
-		return nil
 	}
 }
 
 // WithSyncManifestRepository injects sync manifest persistence for tests or alternate storage backends.
 func WithSyncManifestRepository(syncManifestRepo skillsync.ManifestRepository) Option {
-	return func(opts *options) error {
-		if syncManifestRepo == nil {
-			return fmt.Errorf("sync manifest repository required")
-		}
-
+	return func(opts *options) {
 		opts.syncManifestRepo = syncManifestRepo
-		return nil
 	}
 }
 
 // WithSyncTargetsLoader injects sync target discovery for tests or alternate environments.
 func WithSyncTargetsLoader(syncTargetsLoader SyncTargetsLoader) Option {
-	return func(opts *options) error {
-		if syncTargetsLoader == nil {
-			return fmt.Errorf("sync targets loader required")
-		}
-
+	return func(opts *options) {
 		opts.syncTargetsLoader = syncTargetsLoader
-		return nil
 	}
 }
 
 // New wires an App with default dependencies for any components not provided explicitly.
 func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
-	opts := options{}
+	opts, err := newDefaultOptions(runtime)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, optionFunc := range optionFuncs {
-		if err := optionFunc(&opts); err != nil {
-			return nil, err
-		}
-	}
-
-	if opts.sourceRepository == nil {
-		sourceRepository, err := source.NewFileRepository(runtime.SourcesFile)
-		if err != nil {
-			return nil, err
-		}
-
-		opts.sourceRepository = sourceRepository
-	}
-
-	if opts.sourceRefresher == nil {
-		sourceRefresher, err := source.NewGitRefresher(source.ExecRunner{})
-		if err != nil {
-			return nil, err
-		}
-
-		opts.sourceRefresher = sourceRefresher
-	}
-
-	if opts.catalogRepository == nil {
-		catalogRepository, err := catalog.NewFileRepository(runtime.CatalogFile)
-		if err != nil {
-			return nil, err
-		}
-
-		opts.catalogRepository = catalogRepository
-	}
-
-	if opts.catalogScanner == nil {
-		opts.catalogScanner = catalog.Scan
-	}
-
-	if opts.syncManifestRepo == nil {
-		syncManifestRepo, err := skillsync.NewDirectoryManifestRepository(runtime.SyncStateDir)
-		if err != nil {
-			return nil, err
-		}
-
-		opts.syncManifestRepo = syncManifestRepo
-	}
-
-	if opts.syncTargetsLoader == nil {
-		opts.syncTargetsLoader = agent.DefaultTargets
-	}
-
-	if opts.clock == nil {
-		opts.clock = realClock{}
+		optionFunc(&opts)
 	}
 
 	return &App{
@@ -208,6 +126,38 @@ func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 		syncManifestRepo:  opts.syncManifestRepo,
 		syncTargetsLoader: opts.syncTargetsLoader,
 		clock:             opts.clock,
+	}, nil
+}
+
+func newDefaultOptions(runtime paths.Runtime) (options, error) {
+	sourceRepository, err := source.NewFileRepository(runtime.SourcesFile)
+	if err != nil {
+		return options{}, err
+	}
+
+	sourceRefresher, err := source.NewGitRefresher(source.ExecRunner{})
+	if err != nil {
+		return options{}, err
+	}
+
+	catalogRepository, err := catalog.NewFileRepository(runtime.CatalogFile)
+	if err != nil {
+		return options{}, err
+	}
+
+	syncManifestRepo, err := skillsync.NewDirectoryManifestRepository(runtime.SyncStateDir)
+	if err != nil {
+		return options{}, err
+	}
+
+	return options{
+		sourceRepository:  sourceRepository,
+		sourceRefresher:   sourceRefresher,
+		catalogRepository: catalogRepository,
+		catalogScanner:    catalog.Scan,
+		syncManifestRepo:  syncManifestRepo,
+		syncTargetsLoader: agent.DefaultTargets,
+		clock:             realClock{},
 	}, nil
 }
 
