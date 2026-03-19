@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 )
 
 // Scan walks a source mirror and discovers skill directories backed by `SKILL.md` files.
@@ -62,7 +62,7 @@ func Scan(mirror source.Mirror) (Skills, error) {
 			return err
 		}
 
-		identity, err := skillidentity.New(mirror.ID(), relativePath)
+		identity, err := skill_identity.New(mirror.ID(), relativePath)
 		if err != nil {
 			return err
 		}

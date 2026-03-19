@@ -9,10 +9,10 @@ import (
 
 func newRootCommand(stdout io.Writer, stderr io.Writer, application Application, openTUI func() error) *cobra.Command {
 	rootCommand := &cobra.Command{
-		Use:           "skill-switcher",
+		Use:           "skill-selector",
 		Short:         "Manage shared skills across supported coding agents",
-		Long:          "skill-switcher manages a shared skill catalog, refreshes upstream sources, and syncs selected skills into supported coding agents. Running `skill-switcher` with no arguments opens the terminal UI.",
-		Example:       "  skill-switcher\n  skill-switcher source list\n  skill-switcher profile list\n  skill-switcher refresh\n  skill-switcher catalog list\n  skill-switcher sync --all",
+		Long:          "Skill Selector manages a shared skill catalog, refreshes upstream sources, and syncs selected skills into supported coding agents. Running `skill-selector` with no arguments opens the terminal UI.",
+		Example:       "  skill-selector\n  skill-selector source list\n  skill-selector profile list\n  skill-selector refresh\n  skill-selector catalog list\n  skill-selector sync --all",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {

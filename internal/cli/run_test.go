@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/cli"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func TestRun(t *testing.T) {
 					RenameProfileFunc:       func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					RemoveProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					SwitchProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
+					SyncSkillIdentitiesFunc: func(skill_identity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
 					ListSyncManifestsFunc:   func() ([]skillsync.Manifest, error) { return nil, nil },
 				},
 				OpenTUI: func() error { return nil },
@@ -51,10 +51,10 @@ func TestRun(t *testing.T) {
 			require.NoError(t, err)
 			return configuredSource
 		}
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
 			t.Helper()
 
-			identity, err := skillidentity.New(sourceID, relativePath)
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
@@ -74,7 +74,7 @@ func TestRun(t *testing.T) {
 				stderr bytes.Buffer
 			)
 
-			err := cli.Run(append([]string{"skill-switcher"}, args...), &stdout, &stderr, deps.Application, deps.OpenTUI)
+			err := cli.Run(append([]string{"skill-selector"}, args...), &stdout, &stderr, deps.Application, deps.OpenTUI)
 
 			return stdout.String(), stderr.String(), err
 		}
@@ -87,7 +87,7 @@ func TestRun(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout, "skill-switcher")
+		assert.Contains(t, stdout, "skill-selector")
 		assert.Contains(t, stdout, "source list")
 		assert.Contains(t, stdout, "profile")
 		assert.Contains(t, stdout, "tui")
@@ -410,7 +410,7 @@ func TestRun(t *testing.T) {
 			deps     = newDefaultDependencies()
 		)
 
-		deps.Application.SyncSkillIdentitiesFunc = func(identities skillidentity.Identities) (skillsync.Result, error) {
+		deps.Application.SyncSkillIdentitiesFunc = func(identities skill_identity.Identities) (skillsync.Result, error) {
 			return skillsync.Result{
 				DesiredCount: 1,
 				Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Linked: 1}},
@@ -423,7 +423,7 @@ func TestRun(t *testing.T) {
 		assert.Contains(t, stdout, "Synced 1 selected skill to 1 location")
 		assert.Contains(t, stdout, "opencode")
 		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
 		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
 		assert.Len(t, deps.Application.AddSourceCalls(), 0)
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
@@ -441,7 +441,7 @@ func TestRun(t *testing.T) {
 		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
 			return catalog.NewCatalog(time.Now(), newSkill(t, "source-a", "reviewer", "Reviewer")), nil
 		}
-		deps.Application.SyncSkillIdentitiesFunc = func(skillidentity.Identities) (skillsync.Result, error) {
+		deps.Application.SyncSkillIdentitiesFunc = func(skill_identity.Identities) (skillsync.Result, error) {
 			return skillsync.Result{}, nil
 		}
 
@@ -450,7 +450,7 @@ func TestRun(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, deps.Application.ListCatalogCalls(), 1)
 		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
 		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
 		assert.Len(t, deps.Application.AddSourceCalls(), 0)
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
@@ -488,7 +488,7 @@ func TestRun(t *testing.T) {
 			deps = newDefaultDependencies()
 		)
 
-		deps.Application.SyncSkillIdentitiesFunc = func(skillidentity.Identities) (skillsync.Result, error) {
+		deps.Application.SyncSkillIdentitiesFunc = func(skill_identity.Identities) (skillsync.Result, error) {
 			return skillsync.Result{
 				DesiredCount: 0,
 				Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Error: "boom"}},
@@ -510,7 +510,7 @@ func TestRun(t *testing.T) {
 	})
 }
 
-func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+func mustProfile(t *testing.T, name string, identities ...skill_identity.Identity) profile.Profile {
 	t.Helper()
 
 	item, err := profile.New(name, identities...)

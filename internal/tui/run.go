@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
 )
 
 // Run opens the interactive terminal UI on top of the shared app surface.

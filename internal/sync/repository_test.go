@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,12 +28,12 @@ func TestDirectoryManifestRepository(t *testing.T) {
 			require.NoError(t, err)
 			return repository, dir
 		}
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
-		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skill_identity.Identity) skillsync.Manifest {
 			manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
 			require.NoError(t, err)
 			return manifest
@@ -67,8 +67,8 @@ func TestDirectoryManifestRepository(t *testing.T) {
 		require.Len(t, got, 2)
 		assert.Equal(t, "ampcode", got[0].Adapter())
 		assert.Equal(t, "cursor", got[1].Adapter())
-		assert.Equal(t, skillidentity.Identities{programmerIdentity}, got[0].Identities())
-		assert.Equal(t, skillidentity.Identities{reviewerIdentity}, got[1].Identities())
+		assert.Equal(t, skill_identity.Identities{programmerIdentity}, got[0].Identities())
+		assert.Equal(t, skill_identity.Identities{reviewerIdentity}, got[1].Identities())
 	})
 
 	t.Run("support legacy agent field when loading manifest", func(t *testing.T) {

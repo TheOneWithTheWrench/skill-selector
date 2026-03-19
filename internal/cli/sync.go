@@ -5,8 +5,8 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/spf13/cobra"
 )
 
@@ -17,11 +17,11 @@ func newSyncCommand(application Application) *cobra.Command {
 		Use:     "sync [skill-identity...]",
 		Short:   "Sync selected skills into supported agents",
 		Long:    "Sync one or more skill identities, or the entire catalog, into every configured agent target while preserving per-target manifests.",
-		Example: "  skill-switcher sync source-id:reviewer\n  skill-switcher sync --all\n  skill-switcher sync clear\n  skill-switcher sync status",
+		Example: "  skill-selector sync source-id:reviewer\n  skill-selector sync --all\n  skill-selector sync clear\n  skill-selector sync status",
 		Args:    cobra.ArbitraryArgs,
 		GroupID: "workflow",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var identities skillidentity.Identities
+			var identities skill_identity.Identities
 
 			if all {
 				if len(args) > 0 {
@@ -38,18 +38,18 @@ func newSyncCommand(application Application) *cobra.Command {
 				}
 
 				if len(identities) == 0 {
-					return fmt.Errorf("catalog is empty; run `skill-switcher refresh` first")
+					return fmt.Errorf("catalog is empty; run `skill-selector refresh` first")
 				}
 
-				identities = skillidentity.NewIdentities(identities...)
+				identities = skill_identity.NewIdentities(identities...)
 			} else {
 				if len(args) == 0 {
 					return fmt.Errorf("missing skill identity")
 				}
 
-				parsedIdentities := make(skillidentity.Identities, 0, len(args))
+				parsedIdentities := make(skill_identity.Identities, 0, len(args))
 				for _, rawIdentity := range args {
-					identity, err := skillidentity.Parse(rawIdentity)
+					identity, err := skill_identity.Parse(rawIdentity)
 					if err != nil {
 						return err
 					}
@@ -57,7 +57,7 @@ func newSyncCommand(application Application) *cobra.Command {
 					parsedIdentities = append(parsedIdentities, identity)
 				}
 
-				identities = skillidentity.NewIdentities(parsedIdentities...)
+				identities = skill_identity.NewIdentities(parsedIdentities...)
 			}
 
 			result, err := application.SyncSkillIdentities(identities)

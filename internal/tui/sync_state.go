@@ -5,21 +5,21 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
 type syncLocationState struct {
 	RootPath   string
 	Adapters   []string
-	Identities skillidentity.Identities
+	Identities skill_identity.Identities
 }
 
 func (m Model) syncLocationStates() []syncLocationState {
 	type groupedState struct {
 		RootPath   string
 		Adapters   []string
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}
 
 	groupedStates := make(map[string]*groupedState, len(m.snapshot.Manifests))
@@ -47,7 +47,7 @@ func (m Model) syncLocationStates() []syncLocationState {
 		result = append(result, syncLocationState{
 			RootPath:   groupedState.RootPath,
 			Adapters:   adapters,
-			Identities: skillidentity.NewIdentities(groupedState.Identities...),
+			Identities: skill_identity.NewIdentities(groupedState.Identities...),
 		})
 	}
 

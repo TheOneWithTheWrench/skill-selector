@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 type targetGroup struct {
@@ -17,8 +17,8 @@ type targetGroup struct {
 }
 
 // Run reconciles desired skill identities across every target and returns updated manifests.
-func Run(desired skillidentity.Identities, targets []Target, manifests []Manifest, resolve Resolver) (Result, error) {
-	desired = skillidentity.NewIdentities(desired...)
+func Run(desired skill_identity.Identities, targets []Target, manifests []Manifest, resolve Resolver) (Result, error) {
+	desired = skill_identity.NewIdentities(desired...)
 	targetGroups := groupTargets(targets, manifests)
 
 	var (
@@ -55,7 +55,7 @@ func Run(desired skillidentity.Identities, targets []Target, manifests []Manifes
 }
 
 // SyncTarget reconciles one target against desired identities and the target's last manifest.
-func SyncTarget(desired skillidentity.Identities, target Target, manifest Manifest, resolve Resolver) (TargetResult, Manifest, error) {
+func SyncTarget(desired skill_identity.Identities, target Target, manifest Manifest, resolve Resolver) (TargetResult, Manifest, error) {
 	result := TargetResult{Adapter: target.Adapter()}
 
 	if target.Adapter() == "" {
@@ -75,13 +75,13 @@ func SyncTarget(desired skillidentity.Identities, target Target, manifest Manife
 	}
 
 	manifest = manifest.withAdapter(target.Adapter()).withRootPath(target.RootPath())
-	desired = skillidentity.NewIdentities(desired...)
-	desiredIndex := make(map[string]skillidentity.Identity, len(desired))
+	desired = skill_identity.NewIdentities(desired...)
+	desiredIndex := make(map[string]skill_identity.Identity, len(desired))
 	for _, identity := range desired {
 		desiredIndex[identity.Key()] = identity
 	}
 
-	var linkedIdentities skillidentity.Identities
+	var linkedIdentities skill_identity.Identities
 	for _, identity := range desired {
 		sourcePath, err := resolve(identity)
 		if errors.Is(err, os.ErrNotExist) {

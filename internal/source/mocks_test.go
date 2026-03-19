@@ -7,7 +7,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 )
 
 // Ensure, that RunnerMock does implement source.Runner.

@@ -3,8 +3,8 @@ package profile_test
 import (
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,7 +83,7 @@ func TestProfiles(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "reviewer", got.ActiveName())
-		assert.Equal(t, skillidentity.NewIdentities(identity), got.Active().Selected())
+		assert.Equal(t, skill_identity.NewIdentities(identity), got.Active().Selected())
 	})
 
 	t.Run("set active selection replaces only the active profile selection", func(t *testing.T) {
@@ -96,10 +96,10 @@ func TestProfiles(t *testing.T) {
 			)
 		)
 
-		got, err := profiles.SetActiveSelection(skillidentity.NewIdentities(identity))
+		got, err := profiles.SetActiveSelection(skill_identity.NewIdentities(identity))
 
 		require.NoError(t, err)
-		assert.Equal(t, skillidentity.NewIdentities(identity), got.Active().Selected())
+		assert.Equal(t, skill_identity.NewIdentities(identity), got.Active().Selected())
 		assert.Empty(t, got.All()[0].Selected())
 	})
 
@@ -113,9 +113,27 @@ func TestProfiles(t *testing.T) {
 		require.Error(t, err)
 		assert.EqualError(t, err, "profile already exists: Reviewer")
 	})
+
+	t.Run("remove one source from every profile selection", func(t *testing.T) {
+		var (
+			removedIdentity = newIdentity(t, "source-a", "reviewer")
+			keptIdentity    = newIdentity(t, "source-b", "writer")
+			profiles        = profile.NewProfiles(
+				"reviewer",
+				mustProfile(t, profile.DefaultName, removedIdentity, keptIdentity),
+				mustProfile(t, "reviewer", removedIdentity),
+			)
+		)
+
+		got := profiles.WithoutSource("source-a")
+
+		assert.Equal(t, "reviewer", got.ActiveName())
+		assert.Equal(t, skill_identity.NewIdentities(keptIdentity), got.All()[0].Selected())
+		assert.Empty(t, got.Active().Selected())
+	})
 }
 
-func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+func mustProfile(t *testing.T, name string, identities ...skill_identity.Identity) profile.Profile {
 	t.Helper()
 
 	item, err := profile.New(name, identities...)

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
 )
 
 func ensureSymlink(targetPath string, linkPath string) (bool, error) {
-	if err := fileutil.EnsureParentDir(linkPath); err != nil {
+	if err := file_util.EnsureParentDir(linkPath); err != nil {
 		return false, err
 	}
 

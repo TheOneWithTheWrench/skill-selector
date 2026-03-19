@@ -1,4 +1,4 @@
-package fileutil
+package file_util
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	}
 
 	dir := filepath.Dir(path)
-	file, err := os.CreateTemp(dir, ".skill-switcher-v2-*")
+	file, err := os.CreateTemp(dir, ".skill-selector-*")
 	if err != nil {
 		return fmt.Errorf("create temp file for %q: %w", path, err)
 	}

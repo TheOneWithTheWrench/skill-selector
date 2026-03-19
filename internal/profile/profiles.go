@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 // DefaultProfiles returns the normalized persisted state used before any profile file exists.
@@ -30,7 +30,7 @@ func NewProfiles(activeName string, items ...Profile) Profiles {
 
 		normalized := Profile{
 			name:     normalizedName,
-			selected: skillidentity.NewIdentities(item.selected...),
+			selected: skill_identity.NewIdentities(item.selected...),
 		}
 
 		profileKey := key(normalizedName)
@@ -180,19 +180,19 @@ func (p Profiles) Remove(name string) (Profiles, error) {
 }
 
 // SetActiveSelection replaces the saved selection owned by the active profile.
-func (p Profiles) SetActiveSelection(selected skillidentity.Identities) (Profiles, error) {
+func (p Profiles) SetActiveSelection(selected skill_identity.Identities) (Profiles, error) {
 	return p.SetSelection(p.ActiveName(), selected)
 }
 
 // SetSelection replaces the saved selection owned by one named profile.
-func (p Profiles) SetSelection(name string, selected skillidentity.Identities) (Profiles, error) {
+func (p Profiles) SetSelection(name string, selected skill_identity.Identities) (Profiles, error) {
 	profileIndex := p.index(name)
 	if profileIndex == -1 {
 		return Profiles{}, fmt.Errorf("profile not found: %s", normalizeName(name))
 	}
 
 	nextProfiles := p.All()
-	nextProfiles[profileIndex].selected = skillidentity.NewIdentities(selected...)
+	nextProfiles[profileIndex].selected = skill_identity.NewIdentities(selected...)
 
 	return NewProfiles(p.ActiveName(), nextProfiles...), nil
 }
@@ -208,6 +208,16 @@ func (p Profiles) Switch(name string) (Profiles, error) {
 	}
 
 	return NewProfiles(normalizedName, p.All()...), nil
+}
+
+// WithoutSource removes every saved skill owned by one source across all profiles.
+func (p Profiles) WithoutSource(sourceID string) Profiles {
+	nextProfiles := make([]Profile, 0, len(p.items))
+	for _, item := range p.items {
+		nextProfiles = append(nextProfiles, item.WithoutSource(sourceID))
+	}
+
+	return NewProfiles(p.ActiveName(), nextProfiles...)
 }
 
 func (p Profiles) index(name string) int {

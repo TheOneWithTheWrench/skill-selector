@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
 // Definition describes one built-in sync target for a supported agent.
@@ -90,7 +90,7 @@ func (d Definition) Target(rootOverride string) (skillsync.Target, error) {
 		return skillsync.Target{}, err
 	}
 
-	return skillsync.NewTarget(d.name, rootPath, func(identity skillidentity.Identity) string {
+	return skillsync.NewTarget(d.name, rootPath, func(identity skill_identity.Identity) string {
 		return safeJoin(rootPath, identity.RelativePath())
 	})
 }

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,14 +79,14 @@ func TestSyncSkillIdentities(t *testing.T) {
 
 		sut := newSutWithRuntime(t, deps, runtime)
 
-		got, err := sut.SyncSkillIdentities(skillidentity.NewIdentities(identity))
+		got, err := sut.SyncSkillIdentities(skill_identity.NewIdentities(identity))
 
 		require.NoError(t, err)
 		require.Len(t, got.Targets, 1)
 		assert.Equal(t, 1, got.Targets[0].Linked)
 		require.Len(t, got.Manifests, 1)
 		require.Len(t, deps.SyncManifestRepo.SaveCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.SyncManifestRepo.SaveCalls()[0].Manifest.Identities())
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.SyncManifestRepo.SaveCalls()[0].Manifest.Identities())
 		assert.Equal(t, 1, syncTargetsCalls)
 		require.Len(t, deps.SourceRepository.LoadCalls(), 1)
 		assert.Len(t, deps.SourceRepository.SaveCalls(), 0)
@@ -160,7 +160,7 @@ func TestSyncSkillIdentities(t *testing.T) {
 
 		sut := newSutWithRuntime(t, deps, runtime)
 
-		got, err := sut.SyncSkillIdentities(skillidentity.NewIdentities(identity))
+		got, err := sut.SyncSkillIdentities(skill_identity.NewIdentities(identity))
 
 		require.Error(t, err)
 		assert.ErrorIs(t, err, expectedErr)

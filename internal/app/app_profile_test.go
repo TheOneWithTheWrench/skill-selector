@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -187,13 +187,13 @@ func TestProfiles(t *testing.T) {
 
 		sut := newSut(t, deps)
 
-		got, err := sut.SaveActiveProfileSelection(skillidentity.NewIdentities(identity))
+		got, err := sut.SaveActiveProfileSelection(skill_identity.NewIdentities(identity))
 
 		require.NoError(t, err)
-		assert.Equal(t, skillidentity.NewIdentities(identity), got.Active().Selected())
+		assert.Equal(t, skill_identity.NewIdentities(identity), got.Active().Selected())
 		require.Len(t, deps.ProfileRepository.LoadCalls(), 1)
 		require.Len(t, deps.ProfileRepository.SaveCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.ProfileRepository.SaveCalls()[0].Profiles.Active().Selected())
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.ProfileRepository.SaveCalls()[0].Profiles.Active().Selected())
 		assert.Len(t, deps.SourceRepository.LoadCalls(), 0)
 		assert.Len(t, deps.SourceRepository.SaveCalls(), 0)
 		assert.Len(t, deps.SourceRefresher.RefreshCalls(), 0)
@@ -236,7 +236,7 @@ func TestProfiles(t *testing.T) {
 	})
 }
 
-func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+func mustProfile(t *testing.T, name string, identities ...skill_identity.Identity) profile.Profile {
 	t.Helper()
 
 	item, err := profile.New(name, identities...)

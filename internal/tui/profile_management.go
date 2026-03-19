@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
 )
 
 type profileActionMsg struct {

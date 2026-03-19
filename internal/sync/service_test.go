@@ -5,33 +5,33 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSyncTarget(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
 		newTarget = func(t *testing.T, adapter string, rootPath string) skillsync.Target {
-			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skill_identity.Identity) string {
 				return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 			})
 			require.NoError(t, err)
 			return target
 		}
-		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+		newManifest = func(t *testing.T, adapter string, rootPath string, identities ...skill_identity.Identity) skillsync.Manifest {
 			manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
 			require.NoError(t, err)
 			return manifest
 		}
 		newResolver = func(paths map[string]string) skillsync.Resolver {
-			return func(identity skillidentity.Identity) (string, error) {
+			return func(identity skill_identity.Identity) (string, error) {
 				path, ok := paths[identity.Key()]
 				if !ok {
 					return "", os.ErrNotExist
@@ -59,7 +59,7 @@ func TestSyncTarget(t *testing.T) {
 		require.NoError(t, os.Symlink(filepath.Join(sourceRoot, "gone"), staleTarget))
 
 		result, manifest, err := skillsync.SyncTarget(
-			skillidentity.Identities{desiredIdentity},
+			skill_identity.Identities{desiredIdentity},
 			newTarget(t, "opencode", targetRoot),
 			newManifest(t, "opencode", targetRoot, staleIdentity),
 			newResolver(map[string]string{desiredIdentity.Key(): desiredSource}),
@@ -68,7 +68,7 @@ func TestSyncTarget(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Linked)
 		assert.Equal(t, 1, result.Removed)
-		assert.Equal(t, skillidentity.Identities{desiredIdentity}, manifest.Identities())
+		assert.Equal(t, skill_identity.Identities{desiredIdentity}, manifest.Identities())
 
 		linkTarget, err := os.Readlink(expectedTarget)
 		require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestSyncTarget(t *testing.T) {
 		require.NoError(t, os.MkdirAll(targetRoot, 0o755))
 
 		result, manifest, err := skillsync.SyncTarget(
-			skillidentity.Identities{missingIdentity},
+			skill_identity.Identities{missingIdentity},
 			newTarget(t, "claude", targetRoot),
 			newManifest(t, "claude", targetRoot),
 			newResolver(nil),
@@ -101,13 +101,13 @@ func TestSyncTarget(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
 		newTarget = func(t *testing.T, adapter string, rootPath string) skillsync.Target {
-			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+			target, err := skillsync.NewTarget(adapter, rootPath, func(identity skill_identity.Identity) string {
 				return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 			})
 			require.NoError(t, err)
@@ -130,13 +130,13 @@ func TestRun(t *testing.T) {
 		require.NoError(t, os.MkdirAll(targetRoot2, 0o755))
 
 		result, err := skillsync.Run(
-			skillidentity.Identities{desiredIdentity},
+			skill_identity.Identities{desiredIdentity},
 			[]skillsync.Target{
 				newTarget(t, "claude", targetRoot2),
 				newTarget(t, "opencode", targetRoot1),
 			},
 			nil,
-			func(identity skillidentity.Identity) (string, error) {
+			func(identity skill_identity.Identity) (string, error) {
 				if identity.Key() != desiredIdentity.Key() {
 					return "", os.ErrNotExist
 				}
@@ -166,14 +166,14 @@ func TestRun(t *testing.T) {
 		require.NoError(t, os.MkdirAll(sharedRoot, 0o755))
 
 		result, err := skillsync.Run(
-			skillidentity.Identities{desiredIdentity},
+			skill_identity.Identities{desiredIdentity},
 			[]skillsync.Target{
 				newTarget(t, "ampcode", sharedRoot),
 				newTarget(t, "codex", sharedRoot),
 				newTarget(t, "cursor", sharedRoot),
 			},
 			nil,
-			func(identity skillidentity.Identity) (string, error) {
+			func(identity skill_identity.Identity) (string, error) {
 				if identity.Key() != desiredIdentity.Key() {
 					return "", os.ErrNotExist
 				}

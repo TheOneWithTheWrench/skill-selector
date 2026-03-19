@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
-	tui "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/tui"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
+	tui "github.com/TheOneWithTheWrench/skill-selector/internal/tui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,10 +44,10 @@ func TestService(t *testing.T) {
 					RenameProfileFunc: func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					RemoveProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					SwitchProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					SaveActiveProfileSelectionFunc: func(skillidentity.Identities) (profile.Profiles, error) {
+					SaveActiveProfileSelectionFunc: func(skill_identity.Identities) (profile.Profiles, error) {
 						return profile.DefaultProfiles(), nil
 					},
-					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) {
+					SyncSkillIdentitiesFunc: func(skill_identity.Identities) (skillsync.Result, error) {
 						return skillsync.Result{}, nil
 					},
 					ListSyncManifestsFunc: func() ([]skillsync.Manifest, error) { return nil, nil },
@@ -97,8 +97,8 @@ func TestService(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "reviewer", snapshot.Profiles.ActiveName())
-		assert.Equal(t, skillidentity.NewIdentities(activeIdentity, missingIdentity), snapshot.ActiveSelection())
-		assert.Equal(t, skillidentity.NewIdentities(activeIdentity), snapshot.SyncedSelection)
+		assert.Equal(t, skill_identity.NewIdentities(activeIdentity, missingIdentity), snapshot.ActiveSelection())
+		assert.Equal(t, skill_identity.NewIdentities(activeIdentity), snapshot.SyncedSelection)
 		require.Len(t, snapshot.Warnings, 3)
 		assert.Contains(t, snapshot.Warnings[0], "disagree")
 		assert.Contains(t, snapshot.Warnings[1], "removed sources")
@@ -162,17 +162,17 @@ func TestService(t *testing.T) {
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
 			manifest         = newManifest(t, "opencode", "/tmp/opencode", identity)
-			savedSelection   skillidentity.Identities
+			savedSelection   skill_identity.Identities
 			syncAfterSave    bool
 			deps             = newDefaultDependencies()
 			sut              = newSut(t, deps)
 		)
 
-		deps.Application.SaveActiveProfileSelectionFunc = func(desired skillidentity.Identities) (profile.Profiles, error) {
+		deps.Application.SaveActiveProfileSelectionFunc = func(desired skill_identity.Identities) (profile.Profiles, error) {
 			savedSelection = desired
 			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName, desired...)), nil
 		}
-		deps.Application.SyncSkillIdentitiesFunc = func(desired skillidentity.Identities) (skillsync.Result, error) {
+		deps.Application.SyncSkillIdentitiesFunc = func(desired skill_identity.Identities) (skillsync.Result, error) {
 			syncAfterSave = len(savedSelection) > 0
 			return skillsync.Result{DesiredCount: len(desired)}, errors.New("boom")
 		}
@@ -189,17 +189,17 @@ func TestService(t *testing.T) {
 			return []skillsync.Manifest{manifest}, nil
 		}
 
-		result, err := sut.Sync(newCtx(), skillidentity.NewIdentities(identity))
+		result, err := sut.Sync(newCtx(), skill_identity.NewIdentities(identity))
 
 		require.Error(t, err)
 		require.NotNil(t, result.Snapshot)
 		assert.True(t, syncAfterSave)
-		assert.Equal(t, skillidentity.NewIdentities(identity), savedSelection)
+		assert.Equal(t, skill_identity.NewIdentities(identity), savedSelection)
 		assert.Equal(t, 1, result.Result.DesiredCount)
 		require.Len(t, deps.Application.SaveActiveProfileSelectionCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SaveActiveProfileSelectionCalls()[0].Identities)
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.Application.SaveActiveProfileSelectionCalls()[0].Identities)
 		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Equal(t, skill_identity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
 		require.Len(t, deps.Application.ListSourcesCalls(), 1)
 		require.Len(t, deps.Application.ListCatalogCalls(), 1)
 		require.Len(t, deps.Application.ListProfilesCalls(), 1)
@@ -237,10 +237,10 @@ func parseSource(t *testing.T, locator string) source.Source {
 	return configuredSource
 }
 
-func newIdentity(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+func newIdentity(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
 	t.Helper()
 
-	identity, err := skillidentity.New(sourceID, relativePath)
+	identity, err := skill_identity.New(sourceID, relativePath)
 	require.NoError(t, err)
 
 	return identity
@@ -256,7 +256,7 @@ func newSkill(t *testing.T, sourceID string, relativePath string, name string) c
 	return discoveredSkill
 }
 
-func newManifest(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+func newManifest(t *testing.T, adapter string, rootPath string, identities ...skill_identity.Identity) skillsync.Manifest {
 	t.Helper()
 
 	manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
@@ -265,7 +265,7 @@ func newManifest(t *testing.T, adapter string, rootPath string, identities ...sk
 	return manifest
 }
 
-func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+func mustProfile(t *testing.T, name string, identities ...skill_identity.Identity) profile.Profile {
 	t.Helper()
 
 	item, err := profile.New(name, identities...)

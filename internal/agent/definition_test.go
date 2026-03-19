@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/agent"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/agent"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultDefinitions(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
 			t.Helper()
 
-			identity, err := skillidentity.New(sourceID, relativePath)
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}

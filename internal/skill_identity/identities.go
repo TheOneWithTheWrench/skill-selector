@@ -1,4 +1,4 @@
-package skillidentity
+package skill_identity
 
 import (
 	"fmt"

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +13,7 @@ import (
 func TestNewCatalog(t *testing.T) {
 	var (
 		newSkill = func(t *testing.T, sourceID string, relativePath string, name string) catalog.Skill {
-			identity, err := skillidentity.New(sourceID, relativePath)
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 
 			discoveredSkill, err := catalog.NewSkill(identity, name, name+" description")
@@ -39,7 +39,7 @@ func TestNewCatalog(t *testing.T) {
 func TestCatalogReplaceSource(t *testing.T) {
 	var (
 		newSkill = func(t *testing.T, sourceID string, relativePath string, name string) catalog.Skill {
-			identity, err := skillidentity.New(sourceID, relativePath)
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 
 			discoveredSkill, err := catalog.NewSkill(identity, name, name+" description")

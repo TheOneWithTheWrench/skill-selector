@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
 	"github.com/spf13/cobra"
 )
 

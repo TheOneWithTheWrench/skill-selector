@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,8 +106,14 @@ func TestSources(t *testing.T) {
 		var (
 			locator          = "https://github.com/anthropics/skills/tree/main/skills"
 			configuredSource = parseSource(t, locator)
+			keptIdentity     = newIdentity(t, "other-source", "writer")
+			removedIdentity  = newIdentity(t, configuredSource.ID(), "reviewer")
 			deps             = newDefaultDependencies()
 			storedSources    = source.NewSources(configuredSource)
+			storedProfiles   = profile.NewProfiles(
+				profile.DefaultName,
+				mustProfile(t, profile.DefaultName, removedIdentity, keptIdentity),
+			)
 		)
 
 		deps.SourceRepository.LoadFunc = func() (source.Sources, error) {
@@ -113,6 +121,13 @@ func TestSources(t *testing.T) {
 		}
 		deps.SourceRepository.SaveFunc = func(configuredSources source.Sources) error {
 			storedSources = configuredSources
+			return nil
+		}
+		deps.ProfileRepository.LoadFunc = func() (profile.Profiles, error) {
+			return storedProfiles, nil
+		}
+		deps.ProfileRepository.SaveFunc = func(nextProfiles profile.Profiles) error {
+			storedProfiles = nextProfiles
 			return nil
 		}
 
@@ -126,6 +141,9 @@ func TestSources(t *testing.T) {
 		require.Len(t, deps.SourceRepository.LoadCalls(), 1)
 		require.Len(t, deps.SourceRepository.SaveCalls(), 1)
 		assert.Nil(t, deps.SourceRepository.SaveCalls()[0].Sources)
+		require.Len(t, deps.ProfileRepository.LoadCalls(), 1)
+		require.Len(t, deps.ProfileRepository.SaveCalls(), 1)
+		assert.Equal(t, skill_identity.NewIdentities(keptIdentity), storedProfiles.Active().Selected())
 		assert.Len(t, deps.SourceRefresher.RefreshCalls(), 0)
 		assert.Len(t, deps.CatalogRepository.LoadCalls(), 0)
 		assert.Len(t, deps.CatalogRepository.SaveCalls(), 0)
@@ -182,6 +200,52 @@ func TestSources(t *testing.T) {
 		assert.ErrorIs(t, err, expectedErr)
 		assert.Len(t, deps.SourceRepository.LoadCalls(), 1)
 		assert.Len(t, deps.SourceRepository.SaveCalls(), 1)
+		assert.Len(t, deps.ProfileRepository.LoadCalls(), 1)
+		assert.Len(t, deps.ProfileRepository.SaveCalls(), 0)
+		assert.Len(t, deps.SourceRefresher.RefreshCalls(), 0)
+		assert.Len(t, deps.CatalogRepository.LoadCalls(), 0)
+		assert.Len(t, deps.CatalogRepository.SaveCalls(), 0)
+		assert.Len(t, deps.SyncManifestRepo.LoadAllCalls(), 0)
+		assert.Len(t, deps.SyncManifestRepo.SaveCalls(), 0)
+		assert.Len(t, deps.Clock.NowCalls(), 0)
+	})
+
+	t.Run("rollback source removal when saving cleaned profiles fails", func(t *testing.T) {
+		var (
+			expectedErr      = errors.New("save profiles failed")
+			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
+			removedIdentity  = newIdentity(t, configuredSource.ID(), "reviewer")
+			deps             = newDefaultDependencies()
+			storedSources    = source.NewSources(configuredSource)
+		)
+
+		deps.SourceRepository.LoadFunc = func() (source.Sources, error) {
+			return storedSources, nil
+		}
+		deps.SourceRepository.SaveFunc = func(nextSources source.Sources) error {
+			storedSources = nextSources
+			return nil
+		}
+		deps.ProfileRepository.LoadFunc = func() (profile.Profiles, error) {
+			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName, removedIdentity)), nil
+		}
+		deps.ProfileRepository.SaveFunc = func(profile.Profiles) error {
+			return expectedErr
+		}
+
+		sut := newSut(t, deps)
+
+		_, _, err := sut.RemoveSource(configuredSource.Locator())
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, expectedErr)
+		assert.Equal(t, source.NewSources(configuredSource), storedSources)
+		require.Len(t, deps.SourceRepository.LoadCalls(), 1)
+		require.Len(t, deps.SourceRepository.SaveCalls(), 2)
+		assert.Nil(t, deps.SourceRepository.SaveCalls()[0].Sources)
+		assert.Equal(t, source.NewSources(configuredSource), deps.SourceRepository.SaveCalls()[1].Sources)
+		require.Len(t, deps.ProfileRepository.LoadCalls(), 1)
+		require.Len(t, deps.ProfileRepository.SaveCalls(), 1)
 		assert.Len(t, deps.SourceRefresher.RefreshCalls(), 0)
 		assert.Len(t, deps.CatalogRepository.LoadCalls(), 0)
 		assert.Len(t, deps.CatalogRepository.SaveCalls(), 0)

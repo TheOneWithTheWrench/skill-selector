@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/require"
 )
 
@@ -98,10 +98,10 @@ func parseSource(t *testing.T, rawURL string) source.Source {
 	return configuredSource
 }
 
-func newIdentity(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+func newIdentity(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
 	t.Helper()
 
-	identity, err := skillidentity.New(sourceID, relativePath)
+	identity, err := skill_identity.New(sourceID, relativePath)
 	require.NoError(t, err)
 
 	return identity
@@ -120,7 +120,7 @@ func newSkill(t *testing.T, sourceID string, relativePath string, name string) c
 func newTarget(t *testing.T, adapter string, rootPath string) skillsync.Target {
 	t.Helper()
 
-	target, err := skillsync.NewTarget(adapter, rootPath, func(identity skillidentity.Identity) string {
+	target, err := skillsync.NewTarget(adapter, rootPath, func(identity skill_identity.Identity) string {
 		return filepath.Join(rootPath, filepath.FromSlash(identity.RelativePath()))
 	})
 	require.NoError(t, err)

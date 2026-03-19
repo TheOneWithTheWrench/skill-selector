@@ -7,13 +7,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/tui"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/tui"
 )
 
 // Ensure, that ApplicationMock does implement tui.Application.
@@ -56,13 +56,13 @@ var _ tui.Application = &ApplicationMock{}
 //			RenameProfileFunc: func(s1 string, s2 string) (profile.Profiles, error) {
 //				panic("mock out the RenameProfile method")
 //			},
-//			SaveActiveProfileSelectionFunc: func(identities skillidentity.Identities) (profile.Profiles, error) {
+//			SaveActiveProfileSelectionFunc: func(identities skill_identity.Identities) (profile.Profiles, error) {
 //				panic("mock out the SaveActiveProfileSelection method")
 //			},
 //			SwitchProfileFunc: func(s string) (profile.Profiles, error) {
 //				panic("mock out the SwitchProfile method")
 //			},
-//			SyncSkillIdentitiesFunc: func(identities skillidentity.Identities) (skillsync.Result, error) {
+//			SyncSkillIdentitiesFunc: func(identities skill_identity.Identities) (skillsync.Result, error) {
 //				panic("mock out the SyncSkillIdentities method")
 //			},
 //		}
@@ -103,13 +103,13 @@ type ApplicationMock struct {
 	RenameProfileFunc func(s1 string, s2 string) (profile.Profiles, error)
 
 	// SaveActiveProfileSelectionFunc mocks the SaveActiveProfileSelection method.
-	SaveActiveProfileSelectionFunc func(identities skillidentity.Identities) (profile.Profiles, error)
+	SaveActiveProfileSelectionFunc func(identities skill_identity.Identities) (profile.Profiles, error)
 
 	// SwitchProfileFunc mocks the SwitchProfile method.
 	SwitchProfileFunc func(s string) (profile.Profiles, error)
 
 	// SyncSkillIdentitiesFunc mocks the SyncSkillIdentities method.
-	SyncSkillIdentitiesFunc func(identities skillidentity.Identities) (skillsync.Result, error)
+	SyncSkillIdentitiesFunc func(identities skill_identity.Identities) (skillsync.Result, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -160,7 +160,7 @@ type ApplicationMock struct {
 		// SaveActiveProfileSelection holds details about calls to the SaveActiveProfileSelection method.
 		SaveActiveProfileSelection []struct {
 			// Identities is the identities argument value.
-			Identities skillidentity.Identities
+			Identities skill_identity.Identities
 		}
 		// SwitchProfile holds details about calls to the SwitchProfile method.
 		SwitchProfile []struct {
@@ -170,7 +170,7 @@ type ApplicationMock struct {
 		// SyncSkillIdentities holds details about calls to the SyncSkillIdentities method.
 		SyncSkillIdentities []struct {
 			// Identities is the identities argument value.
-			Identities skillidentity.Identities
+			Identities skill_identity.Identities
 		}
 	}
 	lockAddSource                  sync.RWMutex
@@ -493,12 +493,12 @@ func (mock *ApplicationMock) RenameProfileCalls() []struct {
 }
 
 // SaveActiveProfileSelection calls SaveActiveProfileSelectionFunc.
-func (mock *ApplicationMock) SaveActiveProfileSelection(identities skillidentity.Identities) (profile.Profiles, error) {
+func (mock *ApplicationMock) SaveActiveProfileSelection(identities skill_identity.Identities) (profile.Profiles, error) {
 	if mock.SaveActiveProfileSelectionFunc == nil {
 		panic("ApplicationMock.SaveActiveProfileSelectionFunc: method is nil but Application.SaveActiveProfileSelection was just called")
 	}
 	callInfo := struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}{
 		Identities: identities,
 	}
@@ -513,10 +513,10 @@ func (mock *ApplicationMock) SaveActiveProfileSelection(identities skillidentity
 //
 //	len(mockedApplication.SaveActiveProfileSelectionCalls())
 func (mock *ApplicationMock) SaveActiveProfileSelectionCalls() []struct {
-	Identities skillidentity.Identities
+	Identities skill_identity.Identities
 } {
 	var calls []struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}
 	mock.lockSaveActiveProfileSelection.RLock()
 	calls = mock.calls.SaveActiveProfileSelection
@@ -557,12 +557,12 @@ func (mock *ApplicationMock) SwitchProfileCalls() []struct {
 }
 
 // SyncSkillIdentities calls SyncSkillIdentitiesFunc.
-func (mock *ApplicationMock) SyncSkillIdentities(identities skillidentity.Identities) (skillsync.Result, error) {
+func (mock *ApplicationMock) SyncSkillIdentities(identities skill_identity.Identities) (skillsync.Result, error) {
 	if mock.SyncSkillIdentitiesFunc == nil {
 		panic("ApplicationMock.SyncSkillIdentitiesFunc: method is nil but Application.SyncSkillIdentities was just called")
 	}
 	callInfo := struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}{
 		Identities: identities,
 	}
@@ -577,10 +577,10 @@ func (mock *ApplicationMock) SyncSkillIdentities(identities skillidentity.Identi
 //
 //	len(mockedApplication.SyncSkillIdentitiesCalls())
 func (mock *ApplicationMock) SyncSkillIdentitiesCalls() []struct {
-	Identities skillidentity.Identities
+	Identities skill_identity.Identities
 } {
 	var calls []struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}
 	mock.lockSyncSkillIdentities.RLock()
 	calls = mock.calls.SyncSkillIdentities
@@ -619,7 +619,7 @@ var _ tui.Workflow = &WorkflowMock{}
 //			SwitchProfileFunc: func(contextMoqParam context.Context, s string) (tui.ProfilesActionResult, error) {
 //				panic("mock out the SwitchProfile method")
 //			},
-//			SyncFunc: func(contextMoqParam context.Context, identities skillidentity.Identities) (tui.SyncActionResult, error) {
+//			SyncFunc: func(contextMoqParam context.Context, identities skill_identity.Identities) (tui.SyncActionResult, error) {
 //				panic("mock out the Sync method")
 //			},
 //		}
@@ -651,7 +651,7 @@ type WorkflowMock struct {
 	SwitchProfileFunc func(contextMoqParam context.Context, s string) (tui.ProfilesActionResult, error)
 
 	// SyncFunc mocks the Sync method.
-	SyncFunc func(contextMoqParam context.Context, identities skillidentity.Identities) (tui.SyncActionResult, error)
+	SyncFunc func(contextMoqParam context.Context, identities skill_identity.Identities) (tui.SyncActionResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -709,7 +709,7 @@ type WorkflowMock struct {
 			// ContextMoqParam is the contextMoqParam argument value.
 			ContextMoqParam context.Context
 			// Identities is the identities argument value.
-			Identities skillidentity.Identities
+			Identities skill_identity.Identities
 		}
 	}
 	lockAddSource     sync.RWMutex
@@ -975,13 +975,13 @@ func (mock *WorkflowMock) SwitchProfileCalls() []struct {
 }
 
 // Sync calls SyncFunc.
-func (mock *WorkflowMock) Sync(contextMoqParam context.Context, identities skillidentity.Identities) (tui.SyncActionResult, error) {
+func (mock *WorkflowMock) Sync(contextMoqParam context.Context, identities skill_identity.Identities) (tui.SyncActionResult, error) {
 	if mock.SyncFunc == nil {
 		panic("WorkflowMock.SyncFunc: method is nil but Workflow.Sync was just called")
 	}
 	callInfo := struct {
 		ContextMoqParam context.Context
-		Identities      skillidentity.Identities
+		Identities      skill_identity.Identities
 	}{
 		ContextMoqParam: contextMoqParam,
 		Identities:      identities,
@@ -998,11 +998,11 @@ func (mock *WorkflowMock) Sync(contextMoqParam context.Context, identities skill
 //	len(mockedWorkflow.SyncCalls())
 func (mock *WorkflowMock) SyncCalls() []struct {
 	ContextMoqParam context.Context
-	Identities      skillidentity.Identities
+	Identities      skill_identity.Identities
 } {
 	var calls []struct {
 		ContextMoqParam context.Context
-		Identities      skillidentity.Identities
+		Identities      skill_identity.Identities
 	}
 	mock.lockSync.RLock()
 	calls = mock.calls.Sync

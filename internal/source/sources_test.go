@@ -3,7 +3,7 @@ package source_test
 import (
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

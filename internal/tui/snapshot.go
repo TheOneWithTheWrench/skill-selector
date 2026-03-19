@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
 // Snapshot is the TUI read model loaded from the shared app layer.
@@ -19,7 +19,7 @@ type Snapshot struct {
 	Catalog         catalog.Catalog
 	Profiles        profile.Profiles
 	Manifests       []skillsync.Manifest
-	SyncedSelection skillidentity.Identities
+	SyncedSelection skill_identity.Identities
 	Warnings        []string
 }
 
@@ -27,7 +27,7 @@ func (s Snapshot) ActiveProfile() profile.Profile {
 	return s.Profiles.Active()
 }
 
-func (s Snapshot) ActiveSelection() skillidentity.Identities {
+func (s Snapshot) ActiveSelection() skill_identity.Identities {
 	return s.ActiveProfile().Selected()
 }
 
@@ -46,16 +46,16 @@ func newSnapshot(runtime paths.Runtime, configuredSources source.Sources, curren
 	}
 }
 
-func projectSyncedSelection(manifests []skillsync.Manifest) skillidentity.Identities {
-	var syncedSelection skillidentity.Identities
+func projectSyncedSelection(manifests []skillsync.Manifest) skill_identity.Identities {
+	var syncedSelection skill_identity.Identities
 	for _, manifest := range manifests {
 		syncedSelection = append(syncedSelection, manifest.Identities()...)
 	}
 
-	return skillidentity.NewIdentities(syncedSelection...)
+	return skill_identity.NewIdentities(syncedSelection...)
 }
 
-func projectWarnings(configuredSources source.Sources, activeSelection skillidentity.Identities, syncedSelection skillidentity.Identities, manifests []skillsync.Manifest) []string {
+func projectWarnings(configuredSources source.Sources, activeSelection skill_identity.Identities, syncedSelection skill_identity.Identities, manifests []skillsync.Manifest) []string {
 	var warnings []string
 	if manifestsDiverge(manifests) {
 		warnings = append(warnings, "Sync targets disagree on the current synced skills; the status pane uses the union.")
@@ -87,9 +87,9 @@ func manifestsDiverge(manifests []skillsync.Manifest) bool {
 	return false
 }
 
-func identitiesEqual(left skillidentity.Identities, right skillidentity.Identities) bool {
-	left = skillidentity.NewIdentities(left...)
-	right = skillidentity.NewIdentities(right...)
+func identitiesEqual(left skill_identity.Identities, right skill_identity.Identities) bool {
+	left = skill_identity.NewIdentities(left...)
+	right = skill_identity.NewIdentities(right...)
 	if len(left) != len(right) {
 		return false
 	}
@@ -103,7 +103,7 @@ func identitiesEqual(left skillidentity.Identities, right skillidentity.Identiti
 	return true
 }
 
-func missingSourceIDs(configuredSources source.Sources, identities skillidentity.Identities) []string {
+func missingSourceIDs(configuredSources source.Sources, identities skill_identity.Identities) []string {
 	configuredSourceIDs := make(map[string]struct{}, len(configuredSources))
 	for _, configuredSource := range configuredSources {
 		configuredSourceIDs[configuredSource.ID()] = struct{}{}

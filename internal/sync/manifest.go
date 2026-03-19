@@ -5,18 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 // Manifest is the persisted set of skill identities currently owned by one sync target.
 type Manifest struct {
 	adapter    string
 	rootPath   string
-	identities skillidentity.Identities
+	identities skill_identity.Identities
 }
 
 // NewManifest constructs normalized sync ownership state for one target adapter.
-func NewManifest(adapter string, rootPath string, identities ...skillidentity.Identity) (Manifest, error) {
+func NewManifest(adapter string, rootPath string, identities ...skill_identity.Identity) (Manifest, error) {
 	normalizedAdapter := strings.TrimSpace(adapter)
 	if normalizedAdapter == "" {
 		return Manifest{}, fmt.Errorf("manifest adapter required")
@@ -30,7 +30,7 @@ func NewManifest(adapter string, rootPath string, identities ...skillidentity.Id
 	return Manifest{
 		adapter:    normalizedAdapter,
 		rootPath:   normalizedRootPath,
-		identities: skillidentity.NewIdentities(identities...),
+		identities: skill_identity.NewIdentities(identities...),
 	}, nil
 }
 
@@ -45,8 +45,8 @@ func (m Manifest) RootPath() string {
 }
 
 // Identities returns the normalized skill identities currently owned by the target.
-func (m Manifest) Identities() skillidentity.Identities {
-	return append(skillidentity.Identities(nil), m.identities...)
+func (m Manifest) Identities() skill_identity.Identities {
+	return append(skill_identity.Identities(nil), m.identities...)
 }
 
 func (m Manifest) withRootPath(rootPath string) Manifest {
@@ -59,7 +59,7 @@ func (m Manifest) withRootPath(rootPath string) Manifest {
 	return m
 }
 
-func (m Manifest) withIdentities(identities skillidentity.Identities) Manifest {
-	m.identities = skillidentity.NewIdentities(identities...)
+func (m Manifest) withIdentities(identities skill_identity.Identities) Manifest {
+	m.identities = skill_identity.NewIdentities(identities...)
 	return m
 }

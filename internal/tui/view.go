@@ -12,7 +12,7 @@ import (
 
 func (m Model) View() tea.View {
 	if !m.ready {
-		view := tea.NewView("\n  Starting skill-switcher...")
+		view := tea.NewView("\n  Starting skill-selector...")
 		view.AltScreen = true
 		return view
 	}
@@ -54,7 +54,7 @@ func (m Model) renderHeader(width int) string {
 	if width < 80 || m.height < 32 {
 		profileLine := lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			logoStyle.Render("skill-switcher"),
+			logoStyle.Render("Skill Selector"),
 			" ",
 			badgeStyle.Render(m.selectionOwnerLabel()),
 		)
@@ -101,7 +101,7 @@ func (m Model) renderHeaderMeta(width int) string {
 
 func (m Model) renderLogo(width int) string {
 	if width < 64 {
-		return "skill-switcher"
+		return "Skill Selector"
 	}
 
 	return strings.Trim(logoRaw, "\n")

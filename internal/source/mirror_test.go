@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ func TestMirror(t *testing.T) {
 	t.Run("build mirror paths from source", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			cloneRoot        = filepath.Join("/tmp", "skill-switcher", "sources")
+			cloneRoot        = filepath.Join("/tmp", "skill-selector", "sources")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, cloneRoot)
@@ -36,7 +36,7 @@ func TestMirror(t *testing.T) {
 	t.Run("keep skill path inside subtree", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			cloneRoot        = filepath.Join("/tmp", "skill-switcher", "sources")
+			cloneRoot        = filepath.Join("/tmp", "skill-selector", "sources")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, cloneRoot)

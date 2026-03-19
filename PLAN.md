@@ -1,7 +1,7 @@
-# skill-switcher-v2 plan
+# skill-selector plan
 
 ## Purpose
-- Rebuild `skill-switcher` from scratch with clearer boundaries, better tests, and code we both understand.
+- Rebuild `skill-selector` from scratch with clearer boundaries, better tests, and code we both understand.
 - Keep the product direction from v1, but treat v1 as a behavior reference rather than something to port file-by-file.
 - Make the codebase good enough to open source.
 
@@ -104,13 +104,13 @@
 - As we rebuild each slice, we should stop and name the entities before copying behavior from v1.
 
 ## First pass package boundaries
-- `cmd/skill-switcher/` - process entrypoint
+- `cmd/skill-selector/` - process entrypoint
 - `internal/app/` - orchestration and shared use cases
 - `internal/cli/` - command parsing and text output
 - `internal/tui/` - Bubble Tea program and view models
 - `internal/source/` - `Source`, `Sources`, source repository, local mirrors, and later refresh/update services
 - `internal/catalog/` - `Skill`, `Skills`, `Catalog`, scanning, and catalog repository
-- `internal/skillidentity/` - lightweight skill identities shared by sync and later profiles
+- `internal/skill_identity/` - lightweight skill identities shared by sync and later profiles
 - `internal/sync/` - targets, manifests, reconciliation, and sync persistence
 - `internal/profile/` - profiles, selection state, persistence
 - `internal/agent/` - supported agent adapters and detection
@@ -152,8 +152,8 @@ Package rule:
 - [x] Decide first-pass v2 package names for the initial slice.
 - [x] Clarify the source slice domain language and entity responsibilities.
 - [x] Clarify the catalog slice domain language and entity responsibilities.
-- [x] Initialize the Go module in `skill-switcher-v2/`.
-- [x] Add a small `cmd/skill-switcher` entrypoint that only wires dependencies.
+- [x] Initialize the Go module in `skill-selector/`.
+- [x] Add a small `cmd/skill-selector` entrypoint that only wires dependencies.
 - [x] Build the shared application layer with no CLI/TUI imports.
 - [x] Move source parsing and source persistence into their own package.
 - [x] Move catalog discovery into its own package.

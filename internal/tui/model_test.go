@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ type workflowStub struct {
 	renameProfileFunc  func(context.Context, string, string) (ProfilesActionResult, error)
 	removeProfileFunc  func(context.Context, string) (ProfilesActionResult, error)
 	switchProfileFunc  func(context.Context, string) (ProfilesActionResult, error)
-	syncFunc           func(context.Context, skillidentity.Identities) (SyncActionResult, error)
+	syncFunc           func(context.Context, skill_identity.Identities) (SyncActionResult, error)
 	addSourceCalls     []string
 	removeCalls        []string
 	refreshCalls       int
@@ -30,7 +30,7 @@ type workflowStub struct {
 	renameProfileCalls [][2]string
 	removeProfileCalls []string
 	switchProfileCalls []string
-	syncCalls          []skillidentity.Identities
+	syncCalls          []skill_identity.Identities
 }
 
 func (w *workflowStub) AddSource(ctx context.Context, locator string) (SourceActionResult, error) {
@@ -96,7 +96,7 @@ func (w *workflowStub) SwitchProfile(ctx context.Context, name string) (Profiles
 	return w.switchProfileFunc(ctx, name)
 }
 
-func (w *workflowStub) Sync(ctx context.Context, identities skillidentity.Identities) (SyncActionResult, error) {
+func (w *workflowStub) Sync(ctx context.Context, identities skill_identity.Identities) (SyncActionResult, error) {
 	w.syncCalls = append(w.syncCalls, identities)
 	if w.syncFunc == nil {
 		return SyncActionResult{}, nil
@@ -150,7 +150,7 @@ func TestModel(t *testing.T) {
 					refreshFunc: func(_ context.Context) (RefreshActionResult, error) {
 						return RefreshActionResult{}, nil
 					},
-					syncFunc: func(_ context.Context, _ skillidentity.Identities) (SyncActionResult, error) {
+					syncFunc: func(_ context.Context, _ skill_identity.Identities) (SyncActionResult, error) {
 						return SyncActionResult{}, nil
 					},
 				},

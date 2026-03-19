@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 )
 
 func (m *Model) handleSourceRemoveConfirm(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {

@@ -3,12 +3,12 @@ package tui
 import (
 	"context"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
 // Application is the core app surface used by the TUI.
@@ -23,8 +23,8 @@ type Application interface {
 	RenameProfile(string, string) (profile.Profiles, error)
 	RemoveProfile(string) (profile.Profiles, error)
 	SwitchProfile(string) (profile.Profiles, error)
-	SaveActiveProfileSelection(skillidentity.Identities) (profile.Profiles, error)
-	SyncSkillIdentities(skillidentity.Identities) (skillsync.Result, error)
+	SaveActiveProfileSelection(skill_identity.Identities) (profile.Profiles, error)
+	SyncSkillIdentities(skill_identity.Identities) (skillsync.Result, error)
 	ListSyncManifests() ([]skillsync.Manifest, error)
 }
 
@@ -37,7 +37,7 @@ type Workflow interface {
 	RenameProfile(context.Context, string, string) (ProfilesActionResult, error)
 	RemoveProfile(context.Context, string) (ProfilesActionResult, error)
 	SwitchProfile(context.Context, string) (ProfilesActionResult, error)
-	Sync(context.Context, skillidentity.Identities) (SyncActionResult, error)
+	Sync(context.Context, skill_identity.Identities) (SyncActionResult, error)
 }
 
 // SourceActionResult returns the reloaded TUI snapshot after a source mutation.

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
 )
 
 const repositoryVersion = 1
@@ -85,7 +85,7 @@ func (r FileRepository) Save(configuredSources Sources) error {
 		return fmt.Errorf("encode sources file: %w", err)
 	}
 
-	if err := fileutil.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
+	if err := file_util.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write sources file %q: %w", r.path, err)
 	}
 

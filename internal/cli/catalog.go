@@ -36,7 +36,7 @@ func newCatalogListCommand(application Application) *cobra.Command {
 
 			discoveredSkills := currentCatalog.Skills()
 			if len(discoveredSkills) == 0 {
-				_, err := fmt.Fprintln(cmd.OutOrStdout(), "Catalog is empty. Run `skill-switcher refresh` first.")
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "Catalog is empty. Run `skill-selector refresh` first.")
 				return err
 			}
 

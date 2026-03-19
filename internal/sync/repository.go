@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 const repositoryVersion = 1
@@ -105,7 +105,7 @@ func (r DirectoryManifestRepository) Save(manifest Manifest) error {
 	}
 
 	path := filepath.Join(r.dir, manifest.Adapter()+".json")
-	if err := fileutil.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+	if err := file_util.WriteFile(path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write sync manifest %q: %w", path, err)
 	}
 
@@ -128,9 +128,9 @@ func (r DirectoryManifestRepository) load(path string) (Manifest, error) {
 		adapter = strings.TrimSpace(decoded.Agent)
 	}
 
-	identities := make(skillidentity.Identities, 0, len(decoded.Skills))
+	identities := make(skill_identity.Identities, 0, len(decoded.Skills))
 	for _, item := range decoded.Skills {
-		identity, err := skillidentity.New(item.SourceID, item.RelativePath)
+		identity, err := skill_identity.New(item.SourceID, item.RelativePath)
 		if err != nil {
 			return Manifest{}, fmt.Errorf("decode sync manifest %q: %w", path, err)
 		}

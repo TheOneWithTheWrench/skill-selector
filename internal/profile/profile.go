@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 const (
@@ -18,7 +18,7 @@ func Default() Profile {
 }
 
 // New validates one profile name and normalizes its saved skill identities.
-func New(name string, selected ...skillidentity.Identity) (Profile, error) {
+func New(name string, selected ...skill_identity.Identity) (Profile, error) {
 	normalizedName := normalizeName(name)
 	if normalizedName == "" {
 		return Profile{}, fmt.Errorf("profile name required")
@@ -26,14 +26,14 @@ func New(name string, selected ...skillidentity.Identity) (Profile, error) {
 
 	return Profile{
 		name:     normalizedName,
-		selected: skillidentity.NewIdentities(selected...),
+		selected: skill_identity.NewIdentities(selected...),
 	}, nil
 }
 
 // Profile keeps one named saved selection.
 type Profile struct {
 	name     string
-	selected skillidentity.Identities
+	selected skill_identity.Identities
 }
 
 // Name returns the stable user-facing profile name.
@@ -42,13 +42,30 @@ func (p Profile) Name() string {
 }
 
 // Selected returns a copy of the saved selection owned by this profile.
-func (p Profile) Selected() skillidentity.Identities {
-	return append(skillidentity.Identities(nil), p.selected...)
+func (p Profile) Selected() skill_identity.Identities {
+	return append(skill_identity.Identities(nil), p.selected...)
 }
 
 // SelectedCount returns how many saved skill identities belong to this profile.
 func (p Profile) SelectedCount() int {
 	return len(p.selected)
+}
+
+// WithoutSource returns the same profile with every saved skill from one source removed.
+func (p Profile) WithoutSource(sourceID string) Profile {
+	filtered := make(skill_identity.Identities, 0, len(p.selected))
+	for _, identity := range p.selected {
+		if identity.SourceID() == sourceID {
+			continue
+		}
+
+		filtered = append(filtered, identity)
+	}
+
+	return Profile{
+		name:     p.name,
+		selected: skill_identity.NewIdentities(filtered...),
+	}
 }
 
 func normalizeName(name string) string {

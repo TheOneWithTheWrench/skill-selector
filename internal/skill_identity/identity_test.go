@@ -1,16 +1,16 @@
-package skillidentity_test
+package skill_identity_test
 
 import (
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
 	t.Run("normalize source id and relative path", func(t *testing.T) {
-		got, err := skillidentity.New(" source-a ", "reviewer/./")
+		got, err := skill_identity.New(" source-a ", "reviewer/./")
 
 		require.NoError(t, err)
 		assert.Equal(t, "source-a", got.SourceID())
@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("allow root skill identity", func(t *testing.T) {
-		got, err := skillidentity.New("source-a", "")
+		got, err := skill_identity.New("source-a", "")
 
 		require.NoError(t, err)
 		assert.Equal(t, "", got.RelativePath())
@@ -27,14 +27,14 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("return error when source id is missing", func(t *testing.T) {
-		_, err := skillidentity.New("", "reviewer")
+		_, err := skill_identity.New("", "reviewer")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "source id required")
 	})
 
 	t.Run("return error when path escapes source subtree", func(t *testing.T) {
-		_, err := skillidentity.New("source-a", "../escape")
+		_, err := skill_identity.New("source-a", "../escape")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "must stay within the source subtree")
@@ -43,7 +43,7 @@ func TestNew(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	t.Run("parse stable identity key", func(t *testing.T) {
-		got, err := skillidentity.Parse("source-a:reviewer")
+		got, err := skill_identity.Parse("source-a:reviewer")
 
 		require.NoError(t, err)
 		assert.Equal(t, "source-a", got.SourceID())
@@ -51,7 +51,7 @@ func TestParse(t *testing.T) {
 	})
 
 	t.Run("parse root identity key", func(t *testing.T) {
-		got, err := skillidentity.Parse("source-a:")
+		got, err := skill_identity.Parse("source-a:")
 
 		require.NoError(t, err)
 		assert.Equal(t, "source-a", got.SourceID())
@@ -59,14 +59,14 @@ func TestParse(t *testing.T) {
 	})
 
 	t.Run("return error when identity is empty", func(t *testing.T) {
-		_, err := skillidentity.Parse("")
+		_, err := skill_identity.Parse("")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "skill identity required")
 	})
 
 	t.Run("return error when separator is missing", func(t *testing.T) {
-		_, err := skillidentity.Parse("source-a")
+		_, err := skill_identity.Parse("source-a")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "source:path form")

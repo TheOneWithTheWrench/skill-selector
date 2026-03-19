@@ -5,18 +5,18 @@ import (
 	"path"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 // Skill combines a stable skill identity with discovered catalog metadata.
 type Skill struct {
-	identity    skillidentity.Identity
+	identity    skill_identity.Identity
 	name        string
 	description string
 }
 
 // NewSkill validates discovered skill metadata for a known skill identity.
-func NewSkill(identity skillidentity.Identity, name string, description string) (Skill, error) {
+func NewSkill(identity skill_identity.Identity, name string, description string) (Skill, error) {
 	normalizedName := strings.TrimSpace(name)
 	if normalizedName == "" {
 		return Skill{}, fmt.Errorf("skill name required")
@@ -35,7 +35,7 @@ func (s Skill) ID() string {
 }
 
 // Identity returns the stable identity used to persist and reference the skill.
-func (s Skill) Identity() skillidentity.Identity {
+func (s Skill) Identity() skill_identity.Identity {
 	return s.identity
 }
 

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 const repositoryVersion = 1
@@ -65,7 +65,7 @@ func (r FileRepository) Load() (Catalog, error) {
 
 	discoveredSkills := make(Skills, 0, len(stored.Skills))
 	for _, storedSkill := range stored.Skills {
-		identity, err := skillidentity.New(storedSkill.SourceID, storedSkill.RelativePath)
+		identity, err := skill_identity.New(storedSkill.SourceID, storedSkill.RelativePath)
 		if err != nil {
 			return Catalog{}, fmt.Errorf("decode catalog file %q: %w", r.path, err)
 		}
@@ -105,7 +105,7 @@ func (r FileRepository) Save(current Catalog) error {
 		return fmt.Errorf("encode catalog file: %w", err)
 	}
 
-	if err := fileutil.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
+	if err := file_util.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write catalog file %q: %w", r.path, err)
 	}
 

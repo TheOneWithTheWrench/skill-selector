@@ -7,16 +7,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/agent"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/agent"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
-// App coordinates core skill-switcher use cases while staying independent of any UI layer.
+// App coordinates core skill-selector use cases while staying independent of any UI layer.
 type App struct {
 	paths             paths.Runtime
 	sourceRepository  source.Repository
@@ -226,12 +226,26 @@ func (a *App) RemoveSource(identifier string) (source.Sources, source.Source, er
 		return nil, source.Source{}, err
 	}
 
-	nextSources, removedSource, err := configuredSources.Remove(identifier)
+	profiles, err := a.profileRepository.Load()
 	if err != nil {
 		return nil, source.Source{}, err
 	}
 
+	nextSources, removedSource, err := configuredSources.Remove(identifier)
+	if err != nil {
+		return nil, source.Source{}, err
+	}
+	nextProfiles := profiles.WithoutSource(removedSource.ID())
+
 	if err := a.sourceRepository.Save(nextSources); err != nil {
+		return nil, source.Source{}, err
+	}
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		rollbackErr := a.sourceRepository.Save(configuredSources)
+		if rollbackErr != nil {
+			return nil, source.Source{}, errors.Join(err, fmt.Errorf("rollback removed source %q: %w", removedSource.ID(), rollbackErr))
+		}
+
 		return nil, source.Source{}, err
 	}
 
@@ -421,7 +435,7 @@ func (a *App) SwitchProfile(name string) (profile.Profiles, error) {
 }
 
 // SaveActiveProfileSelection persists the saved selection owned by the active profile.
-func (a *App) SaveActiveProfileSelection(desired skillidentity.Identities) (profile.Profiles, error) {
+func (a *App) SaveActiveProfileSelection(desired skill_identity.Identities) (profile.Profiles, error) {
 	if err := a.paths.EnsureRuntimeDirs(); err != nil {
 		return profile.Profiles{}, err
 	}
@@ -453,7 +467,7 @@ func (a *App) ListSyncManifests() ([]skillsync.Manifest, error) {
 }
 
 // SyncSkillIdentities reconciles lightweight skill identities across detected sync targets.
-func (a *App) SyncSkillIdentities(desired skillidentity.Identities) (skillsync.Result, error) {
+func (a *App) SyncSkillIdentities(desired skill_identity.Identities) (skillsync.Result, error) {
 	if err := a.paths.EnsureRuntimeDirs(); err != nil {
 		return skillsync.Result{}, err
 	}
@@ -508,7 +522,7 @@ func (a *App) sourceResolver() (skillsync.Resolver, error) {
 		mirrorIndex[mirror.ID()] = mirror
 	}
 
-	return func(identity skillidentity.Identity) (string, error) {
+	return func(identity skill_identity.Identity) (string, error) {
 		mirror, ok := mirrorIndex[identity.SourceID()]
 		if !ok {
 			return "", os.ErrNotExist

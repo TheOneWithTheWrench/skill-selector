@@ -1,4 +1,4 @@
-module github.com/TheOneWithTheWrench/skill-switcher-v2
+module github.com/TheOneWithTheWrench/skill-selector
 
 go 1.25.2
 

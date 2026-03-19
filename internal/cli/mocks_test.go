@@ -7,13 +7,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/cli"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 )
 
 // Ensure, that ApplicationMock does implement cli.Application.
@@ -59,7 +59,7 @@ var _ cli.Application = &ApplicationMock{}
 //			SwitchProfileFunc: func(s string) (profile.Profiles, error) {
 //				panic("mock out the SwitchProfile method")
 //			},
-//			SyncSkillIdentitiesFunc: func(identities skillidentity.Identities) (skillsync.Result, error) {
+//			SyncSkillIdentitiesFunc: func(identities skill_identity.Identities) (skillsync.Result, error) {
 //				panic("mock out the SyncSkillIdentities method")
 //			},
 //		}
@@ -103,7 +103,7 @@ type ApplicationMock struct {
 	SwitchProfileFunc func(s string) (profile.Profiles, error)
 
 	// SyncSkillIdentitiesFunc mocks the SyncSkillIdentities method.
-	SyncSkillIdentitiesFunc func(identities skillidentity.Identities) (skillsync.Result, error)
+	SyncSkillIdentitiesFunc func(identities skill_identity.Identities) (skillsync.Result, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -159,7 +159,7 @@ type ApplicationMock struct {
 		// SyncSkillIdentities holds details about calls to the SyncSkillIdentities method.
 		SyncSkillIdentities []struct {
 			// Identities is the identities argument value.
-			Identities skillidentity.Identities
+			Identities skill_identity.Identities
 		}
 	}
 	lockAddSource           sync.RWMutex
@@ -513,12 +513,12 @@ func (mock *ApplicationMock) SwitchProfileCalls() []struct {
 }
 
 // SyncSkillIdentities calls SyncSkillIdentitiesFunc.
-func (mock *ApplicationMock) SyncSkillIdentities(identities skillidentity.Identities) (skillsync.Result, error) {
+func (mock *ApplicationMock) SyncSkillIdentities(identities skill_identity.Identities) (skillsync.Result, error) {
 	if mock.SyncSkillIdentitiesFunc == nil {
 		panic("ApplicationMock.SyncSkillIdentitiesFunc: method is nil but Application.SyncSkillIdentities was just called")
 	}
 	callInfo := struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}{
 		Identities: identities,
 	}
@@ -533,10 +533,10 @@ func (mock *ApplicationMock) SyncSkillIdentities(identities skillidentity.Identi
 //
 //	len(mockedApplication.SyncSkillIdentitiesCalls())
 func (mock *ApplicationMock) SyncSkillIdentitiesCalls() []struct {
-	Identities skillidentity.Identities
+	Identities skill_identity.Identities
 } {
 	var calls []struct {
-		Identities skillidentity.Identities
+		Identities skill_identity.Identities
 	}
 	mock.lockSyncSkillIdentities.RLock()
 	calls = mock.calls.SyncSkillIdentities

@@ -4,10 +4,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/tui"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/cli"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/tui"
 )
 
 func main() {

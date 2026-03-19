@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +57,7 @@ func TestFileRepository(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, profile.DefaultName, got.ActiveName())
-		assert.Equal(t, skillidentity.NewIdentities(identity), got.Active().Selected())
+		assert.Equal(t, skill_identity.NewIdentities(identity), got.Active().Selected())
 	})
 
 	t.Run("return decode error for invalid identity", func(t *testing.T) {

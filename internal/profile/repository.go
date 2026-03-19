@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 )
 
 const repositoryVersion = 2
@@ -98,7 +98,7 @@ func (r FileRepository) Save(profiles Profiles) error {
 		return fmt.Errorf("encode profiles file: %w", err)
 	}
 
-	if err := fileutil.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
+	if err := file_util.WriteFile(r.path, append(data, '\n'), 0o644); err != nil {
 		return fmt.Errorf("write profiles file %q: %w", r.path, err)
 	}
 
@@ -144,10 +144,10 @@ func decodeProfile(stored fileProfile) (Profile, error) {
 	return New(stored.Name, identities...)
 }
 
-func decodeIdentities(stored []fileIdentity) (skillidentity.Identities, error) {
-	identities := make(skillidentity.Identities, 0, len(stored))
+func decodeIdentities(stored []fileIdentity) (skill_identity.Identities, error) {
+	identities := make(skill_identity.Identities, 0, len(stored))
 	for _, item := range stored {
-		identity, err := skillidentity.New(item.SourceID, item.RelativePath)
+		identity, err := skill_identity.New(item.SourceID, item.RelativePath)
 		if err != nil {
 			return nil, err
 		}
@@ -155,10 +155,10 @@ func decodeIdentities(stored []fileIdentity) (skillidentity.Identities, error) {
 		identities = append(identities, identity)
 	}
 
-	return skillidentity.NewIdentities(identities...), nil
+	return skill_identity.NewIdentities(identities...), nil
 }
 
-func encodeIdentities(identities skillidentity.Identities) []fileIdentity {
+func encodeIdentities(identities skill_identity.Identities) []fileIdentity {
 	stored := make([]fileIdentity, 0, len(identities))
 	for _, identity := range identities {
 		stored = append(stored, fileIdentity{

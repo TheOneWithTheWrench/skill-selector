@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
-	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-selector/internal/sync"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,10 +40,10 @@ func parseSource(t *testing.T, locator string) source.Source {
 	return configuredSource
 }
 
-func newIdentity(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
+func newIdentity(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
 	t.Helper()
 
-	identity, err := skillidentity.New(sourceID, relativePath)
+	identity, err := skill_identity.New(sourceID, relativePath)
 	require.NoError(t, err)
 
 	return identity
@@ -59,7 +59,7 @@ func newSkill(t *testing.T, sourceID string, relativePath string, name string) c
 	return discoveredSkill
 }
 
-func newManifest(t *testing.T, adapter string, rootPath string, identities ...skillidentity.Identity) skillsync.Manifest {
+func newManifest(t *testing.T, adapter string, rootPath string, identities ...skill_identity.Identity) skillsync.Manifest {
 	t.Helper()
 
 	manifest, err := skillsync.NewManifest(adapter, rootPath, identities...)
@@ -74,7 +74,7 @@ func newProfiles(t *testing.T, activeName string, items ...profile.Profile) prof
 	return profile.NewProfiles(activeName, items...)
 }
 
-func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+func mustProfile(t *testing.T, name string, identities ...skill_identity.Identity) profile.Profile {
 	t.Helper()
 
 	item, err := profile.New(name, identities...)

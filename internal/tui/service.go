@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/source"
 )
 
 // Service adapts the shared app use cases into the workflows expected by the TUI.
@@ -169,7 +169,7 @@ func (s Service) SwitchProfile(ctx context.Context, name string) (ProfilesAction
 
 // Sync reconciles the desired selection and reloads the persisted sync state.
 
-func (s Service) Sync(ctx context.Context, desired skillidentity.Identities) (SyncActionResult, error) {
+func (s Service) Sync(ctx context.Context, desired skill_identity.Identities) (SyncActionResult, error) {
 	if _, err := s.application.SaveActiveProfileSelection(desired); err != nil {
 		return SyncActionResult{}, err
 	}

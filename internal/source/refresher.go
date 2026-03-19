@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/file_util"
 )
 
 // Refresher updates local mirrors so they match their configured upstream sources.
@@ -39,7 +39,7 @@ func NewGitRefresher(runner Runner) (*GitRefresher, error) {
 func (r GitRefresher) Refresh(ctx context.Context, mirror Mirror) (RefreshResult, error) {
 	_, err := os.Stat(mirror.ClonePath)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := fileutil.EnsureDir(filepath.Dir(mirror.ClonePath)); err != nil {
+		if err := file_util.EnsureDir(filepath.Dir(mirror.ClonePath)); err != nil {
 			return RefreshResult{}, err
 		}
 

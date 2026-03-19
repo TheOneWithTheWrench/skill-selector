@@ -1,17 +1,17 @@
-package skillidentity_test
+package skill_identity_test
 
 import (
 	"testing"
 
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
+	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewIdentities(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
@@ -24,16 +24,16 @@ func TestNewIdentities(t *testing.T) {
 			testerIdentity     = newIdentity(t, "source-a", "tester")
 		)
 
-		got := skillidentity.NewIdentities(programmerIdentity, reviewerIdentity, testerIdentity, reviewerIdentity)
+		got := skill_identity.NewIdentities(programmerIdentity, reviewerIdentity, testerIdentity, reviewerIdentity)
 
-		assert.Equal(t, skillidentity.Identities{reviewerIdentity, testerIdentity, programmerIdentity}, got)
+		assert.Equal(t, skill_identity.Identities{reviewerIdentity, testerIdentity, programmerIdentity}, got)
 	})
 }
 
 func TestIdentitiesAdd(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
@@ -43,19 +43,19 @@ func TestIdentitiesAdd(t *testing.T) {
 		var (
 			reviewerIdentity   = newIdentity(t, "source-a", "reviewer")
 			programmerIdentity = newIdentity(t, "source-b", "programmer")
-			sut                = skillidentity.NewIdentities(reviewerIdentity)
+			sut                = skill_identity.NewIdentities(reviewerIdentity)
 		)
 
 		got, err := sut.Add(programmerIdentity)
 
 		require.NoError(t, err)
-		assert.Equal(t, skillidentity.Identities{reviewerIdentity, programmerIdentity}, got)
+		assert.Equal(t, skill_identity.Identities{reviewerIdentity, programmerIdentity}, got)
 	})
 
 	t.Run("return error when identity already exists", func(t *testing.T) {
 		var (
 			reviewerIdentity = newIdentity(t, "source-a", "reviewer")
-			sut              = skillidentity.NewIdentities(reviewerIdentity)
+			sut              = skill_identity.NewIdentities(reviewerIdentity)
 		)
 
 		_, err := sut.Add(reviewerIdentity)
@@ -67,8 +67,8 @@ func TestIdentitiesAdd(t *testing.T) {
 
 func TestIdentitiesRemove(t *testing.T) {
 	var (
-		newIdentity = func(t *testing.T, sourceID string, relativePath string) skillidentity.Identity {
-			identity, err := skillidentity.New(sourceID, relativePath)
+		newIdentity = func(t *testing.T, sourceID string, relativePath string) skill_identity.Identity {
+			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 			return identity
 		}
@@ -78,19 +78,19 @@ func TestIdentitiesRemove(t *testing.T) {
 		var (
 			reviewerIdentity   = newIdentity(t, "source-a", "reviewer")
 			programmerIdentity = newIdentity(t, "source-b", "programmer")
-			sut                = skillidentity.NewIdentities(reviewerIdentity, programmerIdentity)
+			sut                = skill_identity.NewIdentities(reviewerIdentity, programmerIdentity)
 		)
 
 		got, err := sut.Remove(reviewerIdentity)
 
 		require.NoError(t, err)
-		assert.Equal(t, skillidentity.Identities{programmerIdentity}, got)
+		assert.Equal(t, skill_identity.Identities{programmerIdentity}, got)
 	})
 
 	t.Run("return error when identity is missing", func(t *testing.T) {
 		var (
 			reviewerIdentity = newIdentity(t, "source-a", "reviewer")
-			sut              = skillidentity.NewIdentities()
+			sut              = skill_identity.NewIdentities()
 		)
 
 		_, err := sut.Remove(reviewerIdentity)
