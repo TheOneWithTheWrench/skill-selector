@@ -7,6 +7,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/tui"
 )
 
 func main() {
@@ -28,5 +29,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	return cli.Run(args, stdout, stderr, application)
+	return cli.Run(args, stdout, stderr, application, func() error {
+		return tui.Run(runtimePaths, application)
+	})
 }

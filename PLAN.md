@@ -49,6 +49,7 @@
 - The TUI model is too large; it should be split into smaller focused pieces once the core API is stable.
 - Pure logic and side effects are mixed too often; v2 should separate planning from mutation where possible.
 - We should optimize for readable code and tests, not fastest possible shipping.
+- TUI dirty state is interface-local state, not domain state. The core should accept a desired selection; the TUI should own the draft that differs from what is currently active.
 
 ## Domain language
 - `Source` means a configured upstream skill source with a stable ID, a user-facing locator, a fetch URL, a ref, and a subtree.
@@ -96,6 +97,7 @@
   - TUI manages state/rendering, calls the core, and renders view state
 - Return core/domain results from the application layer. CLI and TUI should map those results into presentation-specific models locally.
 - Rebuild the TUI after the core and CLI have made the boundaries real.
+- The TUI should treat sync manifests as the current active selection and hold a separate session-local desired selection. Sync should stay explicit, and quitting the TUI should drop unsynced draft changes.
 - As we rebuild each slice, we should stop and name the entities before copying behavior from v1.
 
 ## First pass package boundaries
@@ -154,8 +156,9 @@ Package rule:
 - [x] Move catalog discovery into its own package.
 - [x] Move agent adapter and sync logic into focused packages.
 - [x] Implement a first end-to-end CLI flow against the shared core.
+- [x] Add a partial TUI for sources, catalog browsing, draft selection, and sync without pulling profile logic back into the core.
 - [ ] Move profile logic into its own package after the sync and selection model settles.
-- [ ] Rebuild the TUI on top of the shared core.
+- [ ] Extend the TUI to full v1 parity once the profile slice exists.
 - [ ] Add high-quality package tests across core concepts.
 - [ ] Write README and OSS-facing docs once the structure settles.
 

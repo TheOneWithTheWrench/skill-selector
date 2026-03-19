@@ -20,6 +20,7 @@ import (
 func TestRun(t *testing.T) {
 	type dependencies struct {
 		Application *ApplicationMock
+		OpenTUI     func() error
 	}
 
 	var (
@@ -34,6 +35,7 @@ func TestRun(t *testing.T) {
 					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
 					ListSyncManifestsFunc:   func() ([]skillsync.Manifest, error) { return nil, nil },
 				},
+				OpenTUI: func() error { return nil },
 			}
 		}
 		parseSource = func(t *testing.T, rawURL string) source.Source {
@@ -66,7 +68,7 @@ func TestRun(t *testing.T) {
 				stderr bytes.Buffer
 			)
 
-			err := cli.Run(append([]string{"skill-switcher"}, args...), &stdout, &stderr, deps.Application)
+			err := cli.Run(append([]string{"skill-switcher"}, args...), &stdout, &stderr, deps.Application, deps.OpenTUI)
 
 			return stdout.String(), stderr.String(), err
 		}
@@ -80,7 +82,32 @@ func TestRun(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Contains(t, stdout, "source list")
+		assert.Contains(t, stdout, "tui")
 		assert.Contains(t, stdout, "sync --all")
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
+	})
+
+	t.Run("open tui", func(t *testing.T) {
+		var (
+			openTUICalls int
+			deps         = newDefaultDependencies()
+		)
+
+		deps.OpenTUI = func() error {
+			openTUICalls++
+			return nil
+		}
+
+		_, _, err := run(t, deps, "tui")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, openTUICalls)
 		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
 		assert.Len(t, deps.Application.AddSourceCalls(), 0)
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
