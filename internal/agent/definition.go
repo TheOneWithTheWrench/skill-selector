@@ -23,6 +23,7 @@ func DefaultDefinitions() []Definition {
 		{name: "ampcode", defaultRoot: "~/.agents/skills"},
 		{name: "claude", defaultRoot: "~/.claude/skills"},
 		{name: "codex", defaultRoot: "~/.agents/skills"},
+		{name: "cursor", defaultRoot: "~/.agents/skills"},
 		{name: "opencode", defaultRoot: "~/.config/opencode/skills"},
 	}
 

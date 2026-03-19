@@ -22,7 +22,7 @@ func TestDefaultDefinitions(t *testing.T) {
 		}
 	)
 
-	t.Run("resolve shared agents skills defaults for ampcode and codex", func(t *testing.T) {
+	t.Run("resolve shared agents skills defaults for ampcode, codex, and cursor", func(t *testing.T) {
 		definitions := agent.DefaultDefinitions()
 
 		homeDir, err := os.UserHomeDir()
@@ -30,7 +30,7 @@ func TestDefaultDefinitions(t *testing.T) {
 
 		expectedRoot := filepath.Join(homeDir, ".agents", "skills")
 
-		for _, name := range []string{"ampcode", "codex"} {
+		for _, name := range []string{"ampcode", "codex", "cursor"} {
 			definition := lookupDefinition(t, definitions, name)
 
 			rootPath, err := definition.ResolveRoot("")
@@ -108,12 +108,13 @@ func TestDefaultDefinitions(t *testing.T) {
 		targets, err := agent.DefaultTargets()
 
 		require.NoError(t, err)
-		require.Len(t, targets, 4)
-		assert.Equal(t, []string{"ampcode", "claude", "codex", "opencode"}, []string{
+		require.Len(t, targets, 5)
+		assert.Equal(t, []string{"ampcode", "claude", "codex", "cursor", "opencode"}, []string{
 			targets[0].Adapter(),
 			targets[1].Adapter(),
 			targets[2].Adapter(),
 			targets[3].Adapter(),
+			targets[4].Adapter(),
 		})
 	})
 }
