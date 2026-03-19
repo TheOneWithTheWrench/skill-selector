@@ -26,6 +26,7 @@
 - Do not let core packages depend on Bubble Tea, CLI formatting, or view models.
 - Keep filesystem, `gh`, `git`, and symlink side effects behind narrow interfaces.
 - Prefer explicit data types and functions over generic plumbing.
+- Prefer the Go standard library for the CLI until the command surface clearly justifies a framework like Cobra.
 - Prefer domain names over vague infrastructure names like `state` and `store` when a sharper name exists.
 - Keep file versions and JSON schemas in repository code, not in the core entities.
 - Let entities own validation and pure derivations; let services and repositories own side effects.
@@ -38,6 +39,7 @@
 - Path-based skill identity is simple and good enough for now.
 - Symlink sync with owned manifests is the right foundation.
 - Deduplicating adapters that share a root path is a good idea.
+- The default roots for Claude, Opencode, Ampcode, and Codex already match real usage and are worth carrying forward.
 
 ## Learnings from v1
 - The current `internal` package does too much orchestration and owns too many concepts.
@@ -146,8 +148,8 @@ Package rule:
 - [x] Build the shared application layer with no CLI/TUI imports.
 - [x] Move source parsing and source persistence into their own package.
 - [x] Move catalog discovery into its own package.
-- [ ] Move agent adapter and sync logic into focused packages.
-- [ ] Implement a first end-to-end CLI flow against the shared core.
+- [x] Move agent adapter and sync logic into focused packages.
+- [x] Implement a first end-to-end CLI flow against the shared core.
 - [ ] Move profile logic into its own package after the sync and selection model settles.
 - [ ] Rebuild the TUI on top of the shared core.
 - [ ] Add high-quality package tests across core concepts.
