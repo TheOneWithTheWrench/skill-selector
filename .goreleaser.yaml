@@ -1,0 +1,48 @@
+version: 2
+project_name: skill-selector
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: skill-selector
+    main: ./cmd/skill-selector
+    binary: skill-selector
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    builds:
+      - skill-selector
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+release:
+  draft: false
+
+brews:
+  - name: skill-selector
+    homepage: https://github.com/TheOneWithTheWrench/skill-selector
+    description: "Manage shared skills across supported coding agents"
+    license: MIT
+    repository:
+      owner: TheOneWithTheWrench
+      name: tap
+      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}"
+    directory: Formula
+    install: |
+      bin.install "skill-selector"
