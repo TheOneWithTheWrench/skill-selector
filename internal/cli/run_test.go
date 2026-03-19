@@ -18,7 +18,24 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	type dependencies struct {
+		Application *ApplicationMock
+	}
+
 	var (
+		newDefaultDependencies = func() *dependencies {
+			return &dependencies{
+				Application: &ApplicationMock{
+					ListSourcesFunc:         func() (source.Sources, error) { return nil, nil },
+					AddSourceFunc:           func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
+					RemoveSourceFunc:        func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
+					RefreshCatalogFunc:      func(context.Context) (app.RefreshCatalogResult, error) { return app.RefreshCatalogResult{}, nil },
+					ListCatalogFunc:         func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
+					ListSyncManifestsFunc:   func() ([]skillsync.Manifest, error) { return nil, nil },
+				},
+			}
+		}
 		parseSource = func(t *testing.T, rawURL string) source.Source {
 			t.Helper()
 
@@ -41,144 +58,267 @@ func TestRun(t *testing.T) {
 			require.NoError(t, err)
 			return discoveredSkill
 		}
+		run = func(t *testing.T, deps *dependencies, args ...string) (string, string, error) {
+			t.Helper()
+
+			var (
+				stdout bytes.Buffer
+				stderr bytes.Buffer
+			)
+
+			err := cli.Run(append([]string{"skill-switcher"}, args...), &stdout, &stderr, deps.Application)
+
+			return stdout.String(), stderr.String(), err
+		}
 	)
 
 	t.Run("print help when requested", func(t *testing.T) {
-		var stdout bytes.Buffer
-
-		err := cli.Run([]string{"skill-switcher", "help"}, &stdout, &stdout, &ApplicationMock{})
+		var (
+			deps           = newDefaultDependencies()
+			stdout, _, err = run(t, deps, "help")
+		)
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout.String(), "source list")
-		assert.Contains(t, stdout.String(), "sync --all")
+		assert.Contains(t, stdout, "source list")
+		assert.Contains(t, stdout, "sync --all")
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("list configured sources", func(t *testing.T) {
 		var (
-			stdout           bytes.Buffer
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			application      = &ApplicationMock{
-				ListSourcesFunc: func() (source.Sources, error) { return source.Sources{configuredSource}, nil },
-			}
+			deps             = newDefaultDependencies()
 		)
 
-		err := cli.Run([]string{"skill-switcher", "source", "list"}, &stdout, &stdout, application)
+		deps.Application.ListSourcesFunc = func() (source.Sources, error) {
+			return source.Sources{configuredSource}, nil
+		}
+
+		stdout, _, err := run(t, deps, "source", "list")
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout.String(), configuredSource.ID())
-		assert.Contains(t, stdout.String(), configuredSource.Locator())
+		assert.Contains(t, stdout, configuredSource.ID())
+		assert.Contains(t, stdout, configuredSource.Locator())
+		require.Len(t, deps.Application.ListSourcesCalls(), 1)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
+	})
+
+	t.Run("add source", func(t *testing.T) {
+		var (
+			locator          = "https://github.com/anthropics/skills/tree/main/skills"
+			configuredSource = parseSource(t, locator)
+			deps             = newDefaultDependencies()
+		)
+
+		deps.Application.AddSourceFunc = func(gotLocator string) (source.Sources, source.Source, error) {
+			return nil, configuredSource, nil
+		}
+
+		stdout, _, err := run(t, deps, "source", "add", locator)
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Added")
+		require.Len(t, deps.Application.AddSourceCalls(), 1)
+		assert.Equal(t, locator, deps.Application.AddSourceCalls()[0].S)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
+	})
+
+	t.Run("remove source", func(t *testing.T) {
+		var (
+			locator          = "https://github.com/anthropics/skills/tree/main/skills"
+			configuredSource = parseSource(t, locator)
+			deps             = newDefaultDependencies()
+		)
+
+		deps.Application.RemoveSourceFunc = func(identifier string) (source.Sources, source.Source, error) {
+			return nil, configuredSource, nil
+		}
+
+		stdout, _, err := run(t, deps, "source", "remove", locator)
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Removed")
+		require.Len(t, deps.Application.RemoveSourceCalls(), 1)
+		assert.Equal(t, locator, deps.Application.RemoveSourceCalls()[0].S)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("refresh catalog and print source actions", func(t *testing.T) {
 		var (
-			stdout           bytes.Buffer
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			mirror, err      = source.NewMirror(configuredSource, "/tmp/sources")
+			deps             = newDefaultDependencies()
 		)
 		require.NoError(t, err)
 
-		application := &ApplicationMock{
-			RefreshCatalogFunc: func(context.Context) (app.RefreshCatalogResult, error) {
-				return app.RefreshCatalogResult{
-					Sources: []source.RefreshResult{{Mirror: mirror, Action: "cloned"}},
-					Catalog: catalog.NewCatalog(time.Now(), newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")),
-				}, nil
-			},
+		deps.Application.RefreshCatalogFunc = func(context.Context) (app.RefreshCatalogResult, error) {
+			return app.RefreshCatalogResult{
+				Sources: []source.RefreshResult{{Mirror: mirror, Action: "cloned"}},
+				Catalog: catalog.NewCatalog(time.Now(), newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")),
+			}, nil
 		}
 
-		err = cli.Run([]string{"skill-switcher", "refresh"}, &stdout, &stdout, application)
+		stdout, _, err := run(t, deps, "refresh")
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout.String(), "cloned")
-		assert.Contains(t, stdout.String(), configuredSource.Locator())
-		assert.Contains(t, stdout.String(), "1 skill")
+		assert.Contains(t, stdout, "cloned")
+		assert.Contains(t, stdout, configuredSource.Locator())
+		assert.Contains(t, stdout, "1 skill")
+		require.Len(t, deps.Application.RefreshCatalogCalls(), 1)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("list catalog skills", func(t *testing.T) {
-		var stdout bytes.Buffer
-		application := &ApplicationMock{
-			ListCatalogFunc: func() (catalog.Catalog, error) {
-				return catalog.NewCatalog(time.Now(), newSkill(t, "source-a", "reviewer", "Reviewer")), nil
-			},
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
+			return catalog.NewCatalog(time.Now(), newSkill(t, "source-a", "reviewer", "Reviewer")), nil
 		}
 
-		err := cli.Run([]string{"skill-switcher", "catalog", "list"}, &stdout, &stdout, application)
+		stdout, _, err := run(t, deps, "catalog", "list")
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout.String(), "source-a:reviewer")
-		assert.Contains(t, stdout.String(), "Reviewer")
+		assert.Contains(t, stdout, "source-a:reviewer")
+		assert.Contains(t, stdout, "Reviewer")
+		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("sync explicit skill identities", func(t *testing.T) {
-		var stdout bytes.Buffer
-		identity := newIdentity(t, "source-a", "reviewer")
-		application := &ApplicationMock{
-			SyncSkillIdentitiesFunc: func(identities skillidentity.Identities) (skillsync.Result, error) {
-				return skillsync.Result{
-					DesiredCount: 1,
-					Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Linked: 1}},
-				}, nil
-			},
+		var (
+			identity = newIdentity(t, "source-a", "reviewer")
+			deps     = newDefaultDependencies()
+		)
+
+		deps.Application.SyncSkillIdentitiesFunc = func(identities skillidentity.Identities) (skillsync.Result, error) {
+			return skillsync.Result{
+				DesiredCount: 1,
+				Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Linked: 1}},
+			}, nil
 		}
 
-		err := cli.Run([]string{"skill-switcher", "sync", identity.Key()}, &stdout, &stdout, application)
+		stdout, _, err := run(t, deps, "sync", identity.Key())
 
 		require.NoError(t, err)
-		require.Len(t, application.SyncSkillIdentitiesCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), application.SyncSkillIdentitiesCalls()[0].Identities)
-		assert.Contains(t, stdout.String(), "Synced 1 selected skill to 1 location")
-		assert.Contains(t, stdout.String(), "opencode")
+		assert.Contains(t, stdout, "Synced 1 selected skill to 1 location")
+		assert.Contains(t, stdout, "opencode")
+		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
+		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("sync all catalog skills", func(t *testing.T) {
 		var (
-			stdout      bytes.Buffer
-			identity    = newIdentity(t, "source-a", "reviewer")
-			application = &ApplicationMock{
-				ListCatalogFunc: func() (catalog.Catalog, error) {
-					return catalog.NewCatalog(time.Now(), newSkill(t, "source-a", "reviewer", "Reviewer")), nil
-				},
-				SyncSkillIdentitiesFunc: func(identities skillidentity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
-			}
+			identity = newIdentity(t, "source-a", "reviewer")
+			deps     = newDefaultDependencies()
 		)
 
-		err := cli.Run([]string{"skill-switcher", "sync", "--all"}, &stdout, &stdout, application)
+		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
+			return catalog.NewCatalog(time.Now(), newSkill(t, "source-a", "reviewer", "Reviewer")), nil
+		}
+		deps.Application.SyncSkillIdentitiesFunc = func(skillidentity.Identities) (skillsync.Result, error) {
+			return skillsync.Result{}, nil
+		}
+
+		_, _, err := run(t, deps, "sync", "--all")
 
 		require.NoError(t, err)
-		require.Len(t, application.SyncSkillIdentitiesCalls(), 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), application.SyncSkillIdentitiesCalls()[0].Identities)
+		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
+		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 
 	t.Run("list sync status", func(t *testing.T) {
-		var stdout bytes.Buffer
-		manifest, err := skillsync.NewManifest("opencode", "/tmp/opencode", newIdentity(t, "source-a", "reviewer"))
+		var (
+			manifest, err = skillsync.NewManifest("opencode", "/tmp/opencode", newIdentity(t, "source-a", "reviewer"))
+			deps          = newDefaultDependencies()
+		)
 		require.NoError(t, err)
 
-		application := &ApplicationMock{
-			ListSyncManifestsFunc: func() ([]skillsync.Manifest, error) { return []skillsync.Manifest{manifest}, nil },
+		deps.Application.ListSyncManifestsFunc = func() ([]skillsync.Manifest, error) {
+			return []skillsync.Manifest{manifest}, nil
 		}
 
-		err = cli.Run([]string{"skill-switcher", "sync", "status"}, &stdout, &stdout, application)
+		stdout, _, err := run(t, deps, "sync", "status")
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout.String(), "opencode")
-		assert.Contains(t, stdout.String(), "1 skill")
+		assert.Contains(t, stdout, "opencode")
+		assert.Contains(t, stdout, "1 skill")
+		require.Len(t, deps.Application.ListSyncManifestsCalls(), 1)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 	})
 
 	t.Run("return sync error after printing summary", func(t *testing.T) {
-		var stdout bytes.Buffer
-		application := &ApplicationMock{
-			SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) {
-				return skillsync.Result{
-					DesiredCount: 0,
-					Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Error: "boom"}},
-				}, errors.New("boom")
-			},
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.SyncSkillIdentitiesFunc = func(skillidentity.Identities) (skillsync.Result, error) {
+			return skillsync.Result{
+				DesiredCount: 0,
+				Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Error: "boom"}},
+			}, errors.New("boom")
 		}
 
-		err := cli.Run([]string{"skill-switcher", "sync", "clear"}, &stdout, &stdout, application)
+		stdout, _, err := run(t, deps, "sync", "clear")
 
 		require.Error(t, err)
-		assert.Contains(t, stdout.String(), "Cleared synced skills")
+		assert.Contains(t, stdout, "Cleared synced skills")
+		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
+		assert.Nil(t, deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
 }
