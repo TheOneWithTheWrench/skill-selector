@@ -50,6 +50,7 @@
 - Pure logic and side effects are mixed too often; v2 should separate planning from mutation where possible.
 - We should optimize for readable code and tests, not fastest possible shipping.
 - TUI dirty state is interface-local state, not domain state. The core should accept a desired selection; the TUI should own the draft that differs from what is currently active.
+- Active profile selection and current synced state are not the same thing. The TUI should use the active profile selection as its saved baseline and surface sync drift separately.
 
 ## Domain language
 - `Source` means a configured upstream skill source with a stable ID, a user-facing locator, a fetch URL, a ref, and a subtree.
@@ -69,6 +70,8 @@
 - `Target` means one sync destination with a root path and link mapping strategy.
 - `Manifest` means the persisted set of `SkillIdentity` values currently owned by one sync target.
 - Sync should operate on `SkillIdentity`, not `catalog.Skill`, so profiles can later reuse the same selection model without depending on catalog metadata.
+- `Profile` means one named saved selection of `SkillIdentity` values.
+- `Profiles` means the normalized persisted profile state, including which profile is currently active.
 - The same rule should apply in other slices: keep entities pure, keep side effects in explicit services.
 
 ## v1 MVP behavior to preserve
@@ -97,7 +100,7 @@
   - TUI manages state/rendering, calls the core, and renders view state
 - Return core/domain results from the application layer. CLI and TUI should map those results into presentation-specific models locally.
 - Rebuild the TUI after the core and CLI have made the boundaries real.
-- The TUI should treat sync manifests as the current active selection and hold a separate session-local desired selection. Sync should stay explicit, and quitting the TUI should drop unsynced draft changes.
+- The TUI should treat the active profile selection as the saved baseline, hold a separate session-local desired selection, and keep sync state drift separate from draft dirty state. Sync should stay explicit, and quitting the TUI should drop unsynced draft changes.
 - As we rebuild each slice, we should stop and name the entities before copying behavior from v1.
 
 ## First pass package boundaries
@@ -157,8 +160,11 @@ Package rule:
 - [x] Move agent adapter and sync logic into focused packages.
 - [x] Implement a first end-to-end CLI flow against the shared core.
 - [x] Add a partial TUI for sources, catalog browsing, draft selection, and sync without pulling profile logic back into the core.
-- [ ] Move profile logic into its own package after the sync and selection model settles.
-- [ ] Extend the TUI to full v1 parity once the profile slice exists.
+- [x] Move profile logic into its own package after the sync and selection model settles.
+- [x] Re-add CLI profile management on top of the shared core.
+- [x] Reconnect the TUI to active profile selection without reintroducing automatic sync coupling.
+- [ ] Decide and implement the remaining profile policies: dirty-guard on profile switch, source-removal selection cleanup, and any explicit switch-to-sync workflow.
+- [ ] Extend the TUI to the remaining v1 behavior once the profile policy decisions are settled.
 - [ ] Add high-quality package tests across core concepts.
 - [ ] Write README and OSS-facing docs once the structure settles.
 

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 )
@@ -40,12 +42,17 @@ func (s Service) Load(_ context.Context) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 
+	profiles, err := s.application.ListProfiles()
+	if err != nil {
+		return Snapshot{}, err
+	}
+
 	manifests, err := s.application.ListSyncManifests()
 	if err != nil {
 		return Snapshot{}, err
 	}
 
-	return newSnapshot(s.runtime, configuredSources, currentCatalog, manifests), nil
+	return newSnapshot(s.runtime, configuredSources, currentCatalog, profiles, manifests), nil
 }
 
 // AddSource adds one source, refreshes the catalog, and reloads the TUI snapshot.
@@ -104,29 +111,76 @@ func (s Service) Refresh(ctx context.Context) (RefreshActionResult, error) {
 	}, errors.Join(refreshErr, loadErr)
 }
 
+// CreateProfile adds a new empty profile and reloads the TUI snapshot.
+func (s Service) CreateProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	nextProfiles, err := s.application.CreateProfile(name)
+	if err != nil {
+		return ProfilesActionResult{}, err
+	}
+
+	snapshot, loadErr := s.loadSnapshot(ctx)
+	return ProfilesActionResult{
+		Snapshot: snapshot,
+		Summary:  summarizeProfileAction("Created", nextProfiles, name),
+	}, loadErr
+}
+
+// RenameProfile renames one profile and reloads the TUI snapshot.
+func (s Service) RenameProfile(ctx context.Context, currentName string, newName string) (ProfilesActionResult, error) {
+	nextProfiles, err := s.application.RenameProfile(currentName, newName)
+	if err != nil {
+		return ProfilesActionResult{}, err
+	}
+
+	snapshot, loadErr := s.loadSnapshot(ctx)
+	return ProfilesActionResult{
+		Snapshot: snapshot,
+		Summary:  summarizeProfileAction("Renamed", nextProfiles, newName),
+	}, loadErr
+}
+
+// RemoveProfile removes one inactive profile and reloads the TUI snapshot.
+func (s Service) RemoveProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	_, err := s.application.RemoveProfile(name)
+	if err != nil {
+		return ProfilesActionResult{}, err
+	}
+
+	snapshot, loadErr := s.loadSnapshot(ctx)
+	return ProfilesActionResult{
+		Snapshot: snapshot,
+		Summary:  fmt.Sprintf("Removed profile %s", normalizeProfileName(name)),
+	}, loadErr
+}
+
+// SwitchProfile changes the active profile and reloads the TUI snapshot without syncing it automatically.
+func (s Service) SwitchProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	nextProfiles, err := s.application.SwitchProfile(name)
+	if err != nil {
+		return ProfilesActionResult{}, err
+	}
+
+	snapshot, loadErr := s.loadSnapshot(ctx)
+	return ProfilesActionResult{
+		Snapshot: snapshot,
+		Summary:  fmt.Sprintf("Switched active profile to %s", nextProfiles.Active().Name()),
+	}, loadErr
+}
+
 // Sync reconciles the desired selection and reloads the persisted sync state.
-func (s Service) Sync(_ context.Context, desired skillidentity.Identities) (SyncActionResult, error) {
+
+func (s Service) Sync(ctx context.Context, desired skillidentity.Identities) (SyncActionResult, error) {
+	if _, err := s.application.SaveActiveProfileSelection(desired); err != nil {
+		return SyncActionResult{}, err
+	}
+
 	result, syncErr := s.application.SyncSkillIdentities(desired)
-
-	configuredSources, sourceErr := s.application.ListSources()
-	if sourceErr != nil {
-		configuredSources = nil
-	}
-
-	manifests, manifestErr := s.application.ListSyncManifests()
-	if manifestErr != nil {
-		return SyncActionResult{Result: result}, errors.Join(syncErr, sourceErr, manifestErr)
-	}
-
-	activeSelection, warnings := projectActiveSelection(configuredSources, manifests)
+	snapshot, loadErr := s.loadSnapshot(ctx)
 
 	return SyncActionResult{
-		Result:          result,
-		ActiveSelection: activeSelection,
-		Manifests:       manifests,
-		Warnings:        warnings,
-		HasState:        true,
-	}, errors.Join(syncErr, sourceErr, manifestErr)
+		Snapshot: snapshot,
+		Result:   result,
+	}, errors.Join(syncErr, loadErr)
 }
 
 func (s Service) loadSnapshot(ctx context.Context) (*Snapshot, error) {
@@ -156,6 +210,24 @@ func summarizeSourceAction(action string, configuredSource source.Source, snapsh
 		skillCount,
 		pluralize(skillCount, "skill", "skills"),
 	)
+}
+
+func summarizeProfileAction(action string, profiles profile.Profiles, name string) string {
+	item, ok := profiles.Find(name)
+	if !ok {
+		return fmt.Sprintf("%s profile %s", action, normalizeProfileName(name))
+	}
+
+	return fmt.Sprintf("%s profile %s", action, item.Name())
+}
+
+func normalizeProfileName(name string) string {
+	normalizedName := strings.TrimSpace(name)
+	if strings.EqualFold(normalizedName, profile.DefaultName) {
+		return profile.DefaultName
+	}
+
+	return normalizedName
 }
 
 func pluralize(count int, singular string, plural string) string {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -16,43 +17,59 @@ type Snapshot struct {
 	Runtime         paths.Runtime
 	Sources         source.Sources
 	Catalog         catalog.Catalog
+	Profiles        profile.Profiles
 	Manifests       []skillsync.Manifest
-	ActiveSelection skillidentity.Identities
+	SyncedSelection skillidentity.Identities
 	Warnings        []string
 }
 
-func newSnapshot(runtime paths.Runtime, configuredSources source.Sources, currentCatalog catalog.Catalog, manifests []skillsync.Manifest) Snapshot {
-	activeSelection, warnings := projectActiveSelection(configuredSources, manifests)
+func (s Snapshot) ActiveProfile() profile.Profile {
+	return s.Profiles.Active()
+}
+
+func (s Snapshot) ActiveSelection() skillidentity.Identities {
+	return s.ActiveProfile().Selected()
+}
+
+func newSnapshot(runtime paths.Runtime, configuredSources source.Sources, currentCatalog catalog.Catalog, profiles profile.Profiles, manifests []skillsync.Manifest) Snapshot {
+	syncedSelection := projectSyncedSelection(manifests)
+	warnings := projectWarnings(configuredSources, profiles.Active().Selected(), syncedSelection, manifests)
 
 	return Snapshot{
 		Runtime:         runtime,
 		Sources:         configuredSources,
 		Catalog:         currentCatalog,
+		Profiles:        profiles,
 		Manifests:       append([]skillsync.Manifest(nil), manifests...),
-		ActiveSelection: activeSelection,
+		SyncedSelection: syncedSelection,
 		Warnings:        append([]string(nil), warnings...),
 	}
 }
 
-func projectActiveSelection(configuredSources source.Sources, manifests []skillsync.Manifest) (skillidentity.Identities, []string) {
-	activeSelection := make(skillidentity.Identities, 0)
+func projectSyncedSelection(manifests []skillsync.Manifest) skillidentity.Identities {
+	var syncedSelection skillidentity.Identities
 	for _, manifest := range manifests {
-		activeSelection = append(activeSelection, manifest.Identities()...)
+		syncedSelection = append(syncedSelection, manifest.Identities()...)
 	}
 
-	activeSelection = skillidentity.NewIdentities(activeSelection...)
+	return skillidentity.NewIdentities(syncedSelection...)
+}
 
+func projectWarnings(configuredSources source.Sources, activeSelection skillidentity.Identities, syncedSelection skillidentity.Identities, manifests []skillsync.Manifest) []string {
 	var warnings []string
 	if manifestsDiverge(manifests) {
-		warnings = append(warnings, "Sync targets disagree on the active skills; the TUI uses the union.")
+		warnings = append(warnings, "Sync targets disagree on the current synced skills; the status pane uses the union.")
 	}
 
 	missingSourceIDs := missingSourceIDs(configuredSources, activeSelection)
 	if len(missingSourceIDs) > 0 {
-		warnings = append(warnings, fmt.Sprintf("Some synced skills belong to removed sources: %s. Sync to clear them.", summarizeIDs(missingSourceIDs)))
+		warnings = append(warnings, fmt.Sprintf("The active profile selects skills from removed sources: %s.", summarizeIDs(missingSourceIDs)))
+	}
+	if !identitiesEqual(activeSelection, syncedSelection) {
+		warnings = append(warnings, "The active profile selection differs from the current synced state. Press s to sync.")
 	}
 
-	return activeSelection, warnings
+	return warnings
 }
 
 func manifestsDiverge(manifests []skillsync.Manifest) bool {

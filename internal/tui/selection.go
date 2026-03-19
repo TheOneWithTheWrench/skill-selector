@@ -2,12 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"maps"
-	"strings"
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
-	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 )
 
 type selectionSummary struct {
@@ -22,10 +19,10 @@ func (s selectionSummary) Dirty() bool {
 
 func (s selectionSummary) PendingLabel() string {
 	if !s.Dirty() {
-		return "in sync"
+		return "saved"
 	}
 
-	return fmt.Sprintf("+%d -%d pending sync", s.PendingAddCount, s.PendingDelCount)
+	return fmt.Sprintf("+%d -%d unsaved", s.PendingAddCount, s.PendingDelCount)
 }
 
 func (s selectionSummary) SelectionLabel() string {
@@ -33,33 +30,19 @@ func (s selectionSummary) SelectionLabel() string {
 }
 
 type draftSelection struct {
-	active  map[string]skillidentity.Identity
-	desired map[string]skillidentity.Identity
+	baseline map[string]skillidentity.Identity
+	desired  map[string]skillidentity.Identity
 }
 
-func newDraftSelection(active skillidentity.Identities, desired skillidentity.Identities) draftSelection {
+func newDraftSelection(baseline skillidentity.Identities, desired skillidentity.Identities) draftSelection {
 	return draftSelection{
-		active:  identityMap(active),
-		desired: identityMap(desired),
+		baseline: identityMap(baseline),
+		desired:  identityMap(desired),
 	}
 }
 
 func initialDesiredSelection(snapshot Snapshot) skillidentity.Identities {
-	configuredSourceIDs := make(map[string]struct{}, len(snapshot.Sources))
-	for _, configuredSource := range snapshot.Sources {
-		configuredSourceIDs[configuredSource.ID()] = struct{}{}
-	}
-
-	var desired skillidentity.Identities
-	for _, identity := range snapshot.ActiveSelection {
-		if _, ok := configuredSourceIDs[identity.SourceID()]; !ok {
-			continue
-		}
-
-		desired = append(desired, identity)
-	}
-
-	return skillidentity.NewIdentities(desired...)
+	return snapshot.ActiveSelection()
 }
 
 func (s draftSelection) Summary() selectionSummary {
@@ -68,12 +51,12 @@ func (s draftSelection) Summary() selectionSummary {
 	summary.SelectedCount = len(s.desired)
 
 	for key := range s.desired {
-		if _, ok := s.active[key]; !ok {
+		if _, ok := s.baseline[key]; !ok {
 			summary.PendingAddCount++
 		}
 	}
 
-	for key := range s.active {
+	for key := range s.baseline {
 		if _, ok := s.desired[key]; !ok {
 			summary.PendingDelCount++
 		}
@@ -101,16 +84,13 @@ func (s *draftSelection) Toggle(identity skillidentity.Identity) {
 	s.desired[key] = identity
 }
 
-func (s *draftSelection) ReplaceActive(active skillidentity.Identities) {
-	s.active = identityMap(active)
+func (s *draftSelection) ReplaceBaseline(baseline skillidentity.Identities) {
+	s.baseline = identityMap(baseline)
 }
 
-func (s *draftSelection) RemoveSource(sourceID string) {
-	for key, identity := range s.desired {
-		if identity.SourceID() == strings.TrimSpace(sourceID) {
-			delete(s.desired, key)
-		}
-	}
+func (s *draftSelection) Reset(baseline skillidentity.Identities) {
+	s.baseline = identityMap(baseline)
+	s.desired = identityMap(baseline)
 }
 
 func (s draftSelection) DesiredCountForSource(sourceID string) int {
@@ -142,13 +122,6 @@ func identitiesFromMap(identities map[string]skillidentity.Identity) skillidenti
 	return skillidentity.NewIdentities(result...)
 }
 
-func cloneIdentityMap(identities map[string]skillidentity.Identity) map[string]skillidentity.Identity {
-	cloned := make(map[string]skillidentity.Identity, len(identities))
-	maps.Copy(cloned, identities)
-
-	return cloned
-}
-
 func (m Model) selectionSummary() selectionSummary {
 	return m.selection.Summary()
 }
@@ -173,14 +146,10 @@ func (m *Model) toggleCurrentCatalogSkill() {
 
 func (m *Model) applySnapshot(snapshot Snapshot) {
 	m.snapshot = snapshot
-	m.selection.ReplaceActive(snapshot.ActiveSelection)
+	m.selection.ReplaceBaseline(snapshot.ActiveSelection())
 }
 
-func configuredSourceIDs(configuredSources source.Sources) map[string]struct{} {
-	result := make(map[string]struct{}, len(configuredSources))
-	for _, configuredSource := range configuredSources {
-		result[configuredSource.ID()] = struct{}{}
-	}
-
-	return result
+func (m *Model) resetSelection(snapshot Snapshot) {
+	m.snapshot = snapshot
+	m.selection.Reset(snapshot.ActiveSelection())
 }

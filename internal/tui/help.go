@@ -32,7 +32,7 @@ func (m Model) renderHelpBox() string {
 }
 
 func (m Model) shouldRenderFooterStatus() bool {
-	if m.syncing || m.refreshing || m.statusMessage != "" || m.sourceInputActive || m.sourceRemoveConfirmActive {
+	if m.syncing || m.refreshing || m.statusMessage != "" || m.sourceInputActive || m.profileInputActive || m.sourceRemoveConfirmActive || m.profileRemoveConfirmActive {
 		return true
 	}
 	if len(m.snapshot.Warnings) > 0 {
@@ -75,7 +75,13 @@ func (m Model) contextHelpItems() []helpItem {
 	if m.sourceInputActive {
 		return []helpItem{{Key: "enter", Desc: "save"}, {Key: "esc", Desc: "cancel"}, {Key: "backspace", Desc: "erase"}}
 	}
+	if m.profileInputActive {
+		return []helpItem{{Key: "enter", Desc: "save"}, {Key: "esc", Desc: "cancel"}, {Key: "backspace", Desc: "erase"}}
+	}
 	if m.sourceRemoveConfirmActive {
+		return []helpItem{{Key: "y/enter", Desc: "confirm"}, {Key: "n/esc", Desc: "cancel"}}
+	}
+	if m.profileRemoveConfirmActive {
 		return []helpItem{{Key: "y/enter", Desc: "confirm"}, {Key: "n/esc", Desc: "cancel"}}
 	}
 
@@ -85,7 +91,7 @@ func (m Model) contextHelpItems() []helpItem {
 	case sectionCatalog:
 		return []helpItem{{Key: "space", Desc: "toggle"}, {Key: "s", Desc: "sync"}, {Key: "esc", Desc: "back"}}
 	case sectionProfiles:
-		return []helpItem{{Key: "planned", Desc: "next slice"}}
+		return []helpItem{{Key: "space", Desc: "switch"}, {Key: "a", Desc: "create"}, {Key: "e", Desc: "rename"}, {Key: "d", Desc: "remove"}}
 	default:
 		return []helpItem{{Key: "s", Desc: "sync"}}
 	}
@@ -95,7 +101,13 @@ func (m Model) helpContextLabel() string {
 	if m.section == sectionCatalog {
 		return "source"
 	}
+	if m.profileInputActive {
+		return "profile"
+	}
 	if m.sourceRemoveConfirmActive {
+		return "confirm"
+	}
+	if m.profileRemoveConfirmActive {
 		return "confirm"
 	}
 

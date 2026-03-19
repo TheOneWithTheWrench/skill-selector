@@ -44,8 +44,8 @@ func (m *Model) startSync() tea.Cmd {
 
 func (m *Model) finishSync(msg syncCompletedMsg) {
 	m.syncing = false
-	if msg.result.HasState {
-		m.applySyncAction(msg.result)
+	if msg.result.Snapshot != nil {
+		m.applySnapshot(*msg.result.Snapshot)
 	}
 
 	if msg.err != nil {
@@ -64,10 +64,4 @@ func (m *Model) finishSync(msg syncCompletedMsg) {
 	}
 
 	m.statusMessage = "Sync completed"
-}
-
-func (m *Model) applySyncAction(result SyncActionResult) {
-	m.snapshot.Manifests = manifestsFromResult(result.Manifests)
-	m.snapshot.Warnings = append([]string(nil), result.Warnings...)
-	m.selection.ReplaceActive(result.ActiveSelection)
 }

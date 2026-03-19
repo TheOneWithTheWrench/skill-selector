@@ -10,6 +10,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -37,7 +38,15 @@ func TestService(t *testing.T) {
 					RefreshCatalogFunc: func(context.Context) (app.RefreshCatalogResult, error) {
 						return app.RefreshCatalogResult{}, nil
 					},
-					ListCatalogFunc: func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+					ListCatalogFunc:   func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+					ListProfilesFunc:  func() (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					CreateProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RenameProfileFunc: func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RemoveProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					SwitchProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					SaveActiveProfileSelectionFunc: func(skillidentity.Identities) (profile.Profiles, error) {
+						return profile.DefaultProfiles(), nil
+					},
 					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) {
 						return skillsync.Result{}, nil
 					},
@@ -55,11 +64,11 @@ func TestService(t *testing.T) {
 		}
 	)
 
-	t.Run("load projects active selection from manifests with warnings", func(t *testing.T) {
+	t.Run("load uses the active profile selection and reports sync warnings", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			activeIdentity   = newIdentity(t, configuredSource.ID(), "reviewer")
-			staleIdentity    = newIdentity(t, "missing-source", "writer")
+			missingIdentity  = newIdentity(t, "missing-source", "writer")
 			deps             = newDefaultDependencies()
 			sut              = newSut(t, deps)
 		)
@@ -70,30 +79,46 @@ func TestService(t *testing.T) {
 		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
 			return catalog.NewCatalog(time.Now(), newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")), nil
 		}
+		deps.Application.ListProfilesFunc = func() (profile.Profiles, error) {
+			return profile.NewProfiles(
+				"reviewer",
+				mustProfile(t, profile.DefaultName),
+				mustProfile(t, "reviewer", activeIdentity, missingIdentity),
+			), nil
+		}
 		deps.Application.ListSyncManifestsFunc = func() ([]skillsync.Manifest, error) {
 			return []skillsync.Manifest{
 				newManifest(t, "ampcode", "/tmp/agents", activeIdentity),
-				newManifest(t, "opencode", "/tmp/opencode", staleIdentity),
+				newManifest(t, "opencode", "/tmp/opencode"),
 			}, nil
 		}
 
 		snapshot, err := sut.Load(newCtx())
 
 		require.NoError(t, err)
-		assert.Equal(t, skillidentity.NewIdentities(activeIdentity, staleIdentity), snapshot.ActiveSelection)
-		require.Len(t, snapshot.Warnings, 2)
+		assert.Equal(t, "reviewer", snapshot.Profiles.ActiveName())
+		assert.Equal(t, skillidentity.NewIdentities(activeIdentity, missingIdentity), snapshot.ActiveSelection())
+		assert.Equal(t, skillidentity.NewIdentities(activeIdentity), snapshot.SyncedSelection)
+		require.Len(t, snapshot.Warnings, 3)
 		assert.Contains(t, snapshot.Warnings[0], "disagree")
 		assert.Contains(t, snapshot.Warnings[1], "removed sources")
+		assert.Contains(t, snapshot.Warnings[2], "differs")
 		require.Len(t, deps.Application.ListSourcesCalls(), 1)
 		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		require.Len(t, deps.Application.ListProfilesCalls(), 1)
 		require.Len(t, deps.Application.ListSyncManifestsCalls(), 1)
 		assert.Len(t, deps.Application.AddSourceCalls(), 0)
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
 		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+		assert.Len(t, deps.Application.SaveActiveProfileSelectionCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 	})
 
-	t.Run("add source refreshes and reloads snapshot", func(t *testing.T) {
+	t.Run("add source refreshes and reloads the snapshot", func(t *testing.T) {
 		var (
 			locator          = "https://github.com/anthropics/skills/tree/main/skills"
 			configuredSource = parseSource(t, locator)
@@ -126,25 +151,39 @@ func TestService(t *testing.T) {
 		require.Len(t, deps.Application.RefreshCatalogCalls(), 1)
 		require.Len(t, deps.Application.ListSourcesCalls(), 1)
 		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		require.Len(t, deps.Application.ListProfilesCalls(), 1)
 		require.Len(t, deps.Application.ListSyncManifestsCalls(), 1)
-		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.SaveActiveProfileSelectionCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 	})
 
-	t.Run("sync reloads persisted manifests after the sync attempt", func(t *testing.T) {
+	t.Run("sync saves the active profile selection before syncing and reloads state", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
 			manifest         = newManifest(t, "opencode", "/tmp/opencode", identity)
+			savedSelection   skillidentity.Identities
+			syncAfterSave    bool
 			deps             = newDefaultDependencies()
 			sut              = newSut(t, deps)
 		)
 
+		deps.Application.SaveActiveProfileSelectionFunc = func(desired skillidentity.Identities) (profile.Profiles, error) {
+			savedSelection = desired
+			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName, desired...)), nil
+		}
 		deps.Application.SyncSkillIdentitiesFunc = func(desired skillidentity.Identities) (skillsync.Result, error) {
+			syncAfterSave = len(savedSelection) > 0
 			return skillsync.Result{DesiredCount: len(desired)}, errors.New("boom")
 		}
 		deps.Application.ListSourcesFunc = func() (source.Sources, error) {
 			return source.Sources{configuredSource}, nil
+		}
+		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
+			return catalog.NewCatalog(time.Now(), newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")), nil
+		}
+		deps.Application.ListProfilesFunc = func() (profile.Profiles, error) {
+			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName, identity)), nil
 		}
 		deps.Application.ListSyncManifestsFunc = func() ([]skillsync.Manifest, error) {
 			return []skillsync.Manifest{manifest}, nil
@@ -153,17 +192,18 @@ func TestService(t *testing.T) {
 		result, err := sut.Sync(newCtx(), skillidentity.NewIdentities(identity))
 
 		require.Error(t, err)
-		assert.True(t, result.HasState)
-		assert.Equal(t, skillidentity.NewIdentities(identity), result.ActiveSelection)
-		assert.Equal(t, []skillsync.Manifest{manifest}, result.Manifests)
+		require.NotNil(t, result.Snapshot)
+		assert.True(t, syncAfterSave)
+		assert.Equal(t, skillidentity.NewIdentities(identity), savedSelection)
+		assert.Equal(t, 1, result.Result.DesiredCount)
+		require.Len(t, deps.Application.SaveActiveProfileSelectionCalls(), 1)
+		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SaveActiveProfileSelectionCalls()[0].Identities)
 		require.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 1)
 		assert.Equal(t, skillidentity.NewIdentities(identity), deps.Application.SyncSkillIdentitiesCalls()[0].Identities)
 		require.Len(t, deps.Application.ListSourcesCalls(), 1)
+		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		require.Len(t, deps.Application.ListProfilesCalls(), 1)
 		require.Len(t, deps.Application.ListSyncManifestsCalls(), 1)
-		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
-		assert.Len(t, deps.Application.AddSourceCalls(), 0)
-		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
-		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
 	})
 }
 
@@ -223,4 +263,13 @@ func newManifest(t *testing.T, adapter string, rootPath string, identities ...sk
 	require.NoError(t, err)
 
 	return manifest
+}
+
+func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+	t.Helper()
+
+	item, err := profile.New(name, identities...)
+	require.NoError(t, err)
+
+	return item
 }

@@ -15,14 +15,22 @@ import (
 )
 
 type workflowStub struct {
-	addSourceFunc    func(context.Context, string) (SourceActionResult, error)
-	removeSourceFunc func(context.Context, string) (SourceActionResult, error)
-	refreshFunc      func(context.Context) (RefreshActionResult, error)
-	syncFunc         func(context.Context, skillidentity.Identities) (SyncActionResult, error)
-	addSourceCalls   []string
-	removeCalls      []string
-	refreshCalls     int
-	syncCalls        []skillidentity.Identities
+	addSourceFunc      func(context.Context, string) (SourceActionResult, error)
+	removeSourceFunc   func(context.Context, string) (SourceActionResult, error)
+	refreshFunc        func(context.Context) (RefreshActionResult, error)
+	createProfileFunc  func(context.Context, string) (ProfilesActionResult, error)
+	renameProfileFunc  func(context.Context, string, string) (ProfilesActionResult, error)
+	removeProfileFunc  func(context.Context, string) (ProfilesActionResult, error)
+	switchProfileFunc  func(context.Context, string) (ProfilesActionResult, error)
+	syncFunc           func(context.Context, skillidentity.Identities) (SyncActionResult, error)
+	addSourceCalls     []string
+	removeCalls        []string
+	refreshCalls       int
+	createProfileCalls []string
+	renameProfileCalls [][2]string
+	removeProfileCalls []string
+	switchProfileCalls []string
+	syncCalls          []skillidentity.Identities
 }
 
 func (w *workflowStub) AddSource(ctx context.Context, locator string) (SourceActionResult, error) {
@@ -50,6 +58,42 @@ func (w *workflowStub) Refresh(ctx context.Context) (RefreshActionResult, error)
 	}
 
 	return w.refreshFunc(ctx)
+}
+
+func (w *workflowStub) CreateProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	w.createProfileCalls = append(w.createProfileCalls, name)
+	if w.createProfileFunc == nil {
+		return ProfilesActionResult{}, nil
+	}
+
+	return w.createProfileFunc(ctx, name)
+}
+
+func (w *workflowStub) RenameProfile(ctx context.Context, currentName string, newName string) (ProfilesActionResult, error) {
+	w.renameProfileCalls = append(w.renameProfileCalls, [2]string{currentName, newName})
+	if w.renameProfileFunc == nil {
+		return ProfilesActionResult{}, nil
+	}
+
+	return w.renameProfileFunc(ctx, currentName, newName)
+}
+
+func (w *workflowStub) RemoveProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	w.removeProfileCalls = append(w.removeProfileCalls, name)
+	if w.removeProfileFunc == nil {
+		return ProfilesActionResult{}, nil
+	}
+
+	return w.removeProfileFunc(ctx, name)
+}
+
+func (w *workflowStub) SwitchProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
+	w.switchProfileCalls = append(w.switchProfileCalls, name)
+	if w.switchProfileFunc == nil {
+		return ProfilesActionResult{}, nil
+	}
+
+	return w.switchProfileFunc(ctx, name)
 }
 
 func (w *workflowStub) Sync(ctx context.Context, identities skillidentity.Identities) (SyncActionResult, error) {
@@ -93,6 +137,7 @@ func TestModel(t *testing.T) {
 					runtime,
 					source.Sources{configuredSource},
 					newSkills(t, configuredSource.ID(), 6),
+					newProfiles(t, "Default", mustProfile(t, "Default")),
 					nil,
 				),
 				workflow: &workflowStub{
@@ -220,6 +265,7 @@ func TestModel(t *testing.T) {
 					runtime,
 					source.Sources{configuredSource},
 					[]catalog.Skill{newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")},
+					newProfiles(t, "Default", mustProfile(t, "Default")),
 					nil,
 				)
 				return &snapshot
@@ -281,13 +327,20 @@ func TestModel(t *testing.T) {
 		sut.syncing = true
 
 		updated, _ := sut.Update(syncCompletedMsg{result: SyncActionResult{
+			Snapshot: func() *Snapshot {
+				snapshot := buildSnapshot(
+					deps.snapshot.Runtime,
+					source.Sources{configuredSource},
+					deps.snapshot.Catalog.Skills(),
+					newProfiles(t, "Default", mustProfile(t, "Default", identity)),
+					[]skillsync.Manifest{manifest},
+				)
+				return &snapshot
+			}(),
 			Result: skillsync.Result{
 				DesiredCount: 1,
 				Targets:      []skillsync.TargetResult{{Adapter: "opencode", RootPath: "/tmp/opencode", Linked: 1}},
 			},
-			ActiveSelection: skillidentity.NewIdentities(identity),
-			Manifests:       []skillsync.Manifest{manifest},
-			HasState:        true,
 		}})
 		sut = updated.(Model)
 
@@ -298,6 +351,56 @@ func TestModel(t *testing.T) {
 		require.Len(t, sut.snapshot.Manifests, 1)
 	})
 
+	t.Run("profiles section shows the active draft selection count", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies(t)
+			sut  = newSut(deps)
+		)
+
+		sut = sendKey(t, sut, tea.KeyPressMsg{Code: ' ', Text: " "})
+		sut.section = sectionProfiles
+		sut.cursor = 0
+
+		items := sut.currentItems()
+
+		require.Len(t, items, 1)
+		assert.Equal(t, "Default", items[0].Title)
+		assert.Equal(t, "active • 1 selected skills", items[0].Subtitle)
+	})
+
+	t.Run("profile switch message resets the draft selection to the new active profile", func(t *testing.T) {
+		var (
+			deps             = newDefaultDependencies(t)
+			configuredSource = deps.snapshot.Sources[0]
+			identity         = newIdentity(t, configuredSource.ID(), "skill-02")
+			sut              = newSut(deps)
+		)
+
+		sut = sendKey(t, sut, tea.KeyPressMsg{Code: ' ', Text: " "})
+		sut.section = sectionProfiles
+		sut.cursor = 1
+
+		updated, _ := sut.Update(profileActionMsg{result: ProfilesActionResult{
+			Snapshot: func() *Snapshot {
+				snapshot := buildSnapshot(
+					deps.snapshot.Runtime,
+					source.Sources{configuredSource},
+					deps.snapshot.Catalog.Skills(),
+					newProfiles(t, "reviewer", mustProfile(t, "Default"), mustProfile(t, "reviewer", identity)),
+					nil,
+				)
+				return &snapshot
+			}(),
+			Summary: "Switched active profile to reviewer",
+		}})
+		sut = updated.(Model)
+
+		assert.Equal(t, "reviewer", sut.snapshot.Profiles.ActiveName())
+		assert.Equal(t, 0, sut.selectionSummary().PendingAddCount)
+		assert.Equal(t, 0, sut.selectionSummary().PendingDelCount)
+		assert.Contains(t, sut.statusMessage, "Switched active profile")
+	})
+
 	t.Run("status section groups manifests by location", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
@@ -306,6 +409,7 @@ func TestModel(t *testing.T) {
 				testRuntime(t),
 				source.Sources{configuredSource},
 				nil,
+				newProfiles(t, "Default", mustProfile(t, "Default")),
 				[]skillsync.Manifest{
 					newManifest(t, "ampcode", "/tmp/agents/skills", identity),
 					newManifest(t, "codex", "/tmp/agents/skills", identity),

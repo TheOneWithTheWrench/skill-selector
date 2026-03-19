@@ -5,6 +5,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -17,6 +18,12 @@ type Application interface {
 	RemoveSource(string) (source.Sources, source.Source, error)
 	RefreshCatalog(context.Context) (app.RefreshCatalogResult, error)
 	ListCatalog() (catalog.Catalog, error)
+	ListProfiles() (profile.Profiles, error)
+	CreateProfile(string) (profile.Profiles, error)
+	RenameProfile(string, string) (profile.Profiles, error)
+	RemoveProfile(string) (profile.Profiles, error)
+	SwitchProfile(string) (profile.Profiles, error)
+	SaveActiveProfileSelection(skillidentity.Identities) (profile.Profiles, error)
 	SyncSkillIdentities(skillidentity.Identities) (skillsync.Result, error)
 	ListSyncManifests() ([]skillsync.Manifest, error)
 }
@@ -26,6 +33,10 @@ type Workflow interface {
 	AddSource(context.Context, string) (SourceActionResult, error)
 	RemoveSource(context.Context, string) (SourceActionResult, error)
 	Refresh(context.Context) (RefreshActionResult, error)
+	CreateProfile(context.Context, string) (ProfilesActionResult, error)
+	RenameProfile(context.Context, string, string) (ProfilesActionResult, error)
+	RemoveProfile(context.Context, string) (ProfilesActionResult, error)
+	SwitchProfile(context.Context, string) (ProfilesActionResult, error)
 	Sync(context.Context, skillidentity.Identities) (SyncActionResult, error)
 }
 
@@ -42,11 +53,14 @@ type RefreshActionResult struct {
 	Summary  string
 }
 
+// ProfilesActionResult returns the reloaded TUI snapshot after one profile mutation.
+type ProfilesActionResult struct {
+	Snapshot *Snapshot
+	Summary  string
+}
+
 // SyncActionResult returns the latest persisted sync state after one sync attempt.
 type SyncActionResult struct {
-	Result          skillsync.Result
-	ActiveSelection skillidentity.Identities
-	Manifests       []skillsync.Manifest
-	Warnings        []string
-	HasState        bool
+	Snapshot *Snapshot
+	Result   skillsync.Result
 }

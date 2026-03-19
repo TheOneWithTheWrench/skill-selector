@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 )
 
@@ -28,31 +29,44 @@ type itemRange struct {
 	EndLine   int
 }
 
+type profileInputMode int
+
 // Model is the Bubble Tea model for the v2 TUI.
 type Model struct {
-	snapshot                  Snapshot
-	workflow                  Workflow
-	section                   section
-	cursor                    int
-	offset                    int
-	activeSourceID            string
-	sourceListCursor          int
-	sourceListOffset          int
-	sourceCatalogCursor       int
-	sourceCatalogOffset       int
-	width                     int
-	height                    int
-	ready                     bool
-	selection                 draftSelection
-	spinner                   spinner.Model
-	syncing                   bool
-	refreshing                bool
-	sourceInputActive         bool
-	sourceInputValue          string
-	sourceRemoveConfirmActive bool
-	sourceToRemove            source.Source
-	statusMessage             string
+	snapshot                   Snapshot
+	workflow                   Workflow
+	section                    section
+	cursor                     int
+	offset                     int
+	activeSourceID             string
+	sourceListCursor           int
+	sourceListOffset           int
+	sourceCatalogCursor        int
+	sourceCatalogOffset        int
+	profileInputActive         bool
+	profileInputMode           profileInputMode
+	profileInputValue          string
+	profileToRename            string
+	profileRemoveConfirmActive bool
+	profileToRemove            profile.Profile
+	width                      int
+	height                     int
+	ready                      bool
+	selection                  draftSelection
+	spinner                    spinner.Model
+	syncing                    bool
+	refreshing                 bool
+	sourceInputActive          bool
+	sourceInputValue           string
+	sourceRemoveConfirmActive  bool
+	sourceToRemove             source.Source
+	statusMessage              string
 }
+
+const (
+	profileInputCreate profileInputMode = iota
+	profileInputRename
+)
 
 const (
 	sectionSources section = iota
@@ -79,7 +93,7 @@ func New(initial Snapshot, workflow Workflow) Model {
 	return Model{
 		snapshot:  initial,
 		workflow:  workflow,
-		selection: newDraftSelection(initial.ActiveSelection, initialDesiredSelection(initial)),
+		selection: newDraftSelection(initial.ActiveSelection(), initialDesiredSelection(initial)),
 		spinner:   newSpinner(),
 	}
 }
@@ -105,6 +119,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case syncCompletedMsg:
 		m.finishSync(msg)
 		return m, nil
+	case profileActionMsg:
+		m.finishProfileSwitch(msg)
+		return m, nil
+	case profileEditMsg:
+		m.finishProfileEdit(msg)
+		return m, nil
+	case profileRemovedMsg:
+		m.finishRemoveProfile(msg)
+		return m, nil
 	case sourceRemovedMsg:
 		m.finishRemoveSource(msg)
 		return m, nil
@@ -115,10 +138,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.finishRefresh(msg)
 		return m, nil
 	case tea.PasteMsg:
+		if updatedModel, cmd, handled := m.handleProfilePaste(msg); handled {
+			return updatedModel, cmd
+		}
 		if updatedModel, cmd, handled := m.handleSourcePaste(msg); handled {
 			return updatedModel, cmd
 		}
 	case tea.KeyPressMsg:
+		if updatedModel, cmd, handled := m.handleProfileRemoveConfirm(msg); handled {
+			return updatedModel, cmd
+		}
+		if updatedModel, cmd, handled := m.handleProfileInput(msg); handled {
+			return updatedModel, cmd
+		}
 		if updatedModel, cmd, handled := m.handleSourceRemoveConfirm(msg); handled {
 			return updatedModel, cmd
 		}
@@ -136,8 +168,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.exitDetailMode()
 		case " ", "space":
 			if m.section == sectionProfiles {
-				m.statusMessage = "Profiles are not implemented yet"
-				return m, nil
+				cmd := m.startSwitchProfile()
+				return m, cmd
 			}
 			m.toggleCurrentCatalogSkill()
 		case "a":
@@ -145,9 +177,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			m.beginRemoveCurrentItem()
 		case "e":
-			if m.section == sectionProfiles {
-				m.statusMessage = "Profiles are not implemented yet"
-			}
+			m.beginRenameCurrentProfile()
 		case "r", "R":
 			cmd := m.startRefreshSources()
 			return m, cmd
@@ -249,11 +279,27 @@ func (m Model) currentItems() []item {
 
 		return items
 	case sectionProfiles:
-		return []item{{
-			Title:    "Profiles land next",
-			Subtitle: "The current selection lives in this TUI session until you sync",
-			Detail:   renderProfileDetail(),
-		}}
+		items := make([]item, 0, len(m.snapshot.Profiles.All()))
+		for _, currentProfile := range m.snapshot.Profiles.All() {
+			selectedCount := currentProfile.SelectedCount()
+			if currentProfile.Name() == m.snapshot.Profiles.ActiveName() {
+				selectedCount = m.selectionSummary().SelectedCount
+			}
+
+			subtitle := fmt.Sprintf("%d selected skills", selectedCount)
+			if currentProfile.Name() == m.snapshot.Profiles.ActiveName() {
+				subtitle = "active • " + subtitle
+			}
+
+			items = append(items, item{
+				Title:    currentProfile.Name(),
+				Subtitle: subtitle,
+				Detail:   renderProfileDetail(currentProfile, currentProfile.Name() == m.snapshot.Profiles.ActiveName()),
+				Active:   currentProfile.Name() == m.snapshot.Profiles.ActiveName(),
+			})
+		}
+
+		return items
 	default:
 		summary := m.selectionSummary()
 		items := []item{{
@@ -327,7 +373,7 @@ func (m *Model) beginCreateInput() {
 	}
 
 	if m.section == sectionProfiles {
-		m.statusMessage = "Profiles are not implemented yet"
+		m.beginCreateProfile()
 	}
 }
 
@@ -338,7 +384,7 @@ func (m *Model) beginRemoveCurrentItem() {
 	}
 
 	if m.section == sectionProfiles {
-		m.statusMessage = "Profiles are not implemented yet"
+		m.beginRemoveProfileConfirm()
 	}
 }
 
@@ -545,15 +591,6 @@ func renderSourceDetail(configuredSource source.Source, discoveredSkillCount int
 	}, "\n")
 }
 
-func renderProfileDetail() string {
-	return strings.Join([]string{
-		"Profiles are the next slice.",
-		"",
-		"For now, the TUI owns a session-local desired selection and syncs it explicitly.",
-		"The future profile slice can plug into the same desired-vs-active selection model.",
-	}, "\n")
-}
-
 func renderStatusDetail(snapshot Snapshot, summary selectionSummary) string {
 	lastIndexed := "not indexed yet"
 	if !snapshot.Catalog.IndexedAt().IsZero() {
@@ -565,11 +602,12 @@ func renderStatusDetail(snapshot Snapshot, summary selectionSummary) string {
 		"Catalog: " + snapshot.Runtime.CatalogFile,
 		"Profiles: " + snapshot.Runtime.ProfilesFile,
 		"Sync state: " + snapshot.Runtime.SyncStateDir,
-		"Selected skills: " + fmt.Sprintf("%d", summary.SelectedCount),
-		"Pending changes: " + summary.PendingLabel(),
+		"Active profile: " + snapshot.Profiles.ActiveName(),
+		"Saved skills: " + fmt.Sprintf("%d", snapshot.ActiveProfile().SelectedCount()),
+		"Draft skills: " + fmt.Sprintf("%d", summary.SelectedCount),
+		"Draft changes: " + summary.PendingLabel(),
+		"Synced skills: " + fmt.Sprintf("%d", len(snapshot.SyncedSelection)),
 		"Last indexed: " + lastIndexed,
-		"",
-		"Profiles are not implemented yet. The current desired selection only lives in this TUI session until you sync.",
 	}
 
 	if len(snapshot.Warnings) > 0 {

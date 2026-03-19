@@ -36,7 +36,7 @@ func (m Model) View() tea.View {
 		lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, " ", rightPanel),
 		footer,
 	}, "\n\n")
-	if m.sourceRemoveConfirmActive {
+	if m.sourceRemoveConfirmActive || m.profileRemoveConfirmActive {
 		content = m.renderConfirmView()
 	}
 
@@ -52,7 +52,7 @@ func (m Model) renderHeader(width int) string {
 	}
 
 	if width < 80 || m.height < 32 {
-		sessionLine := lipgloss.JoinHorizontal(
+		profileLine := lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			logoStyle.Render("skill-switcher"),
 			" ",
@@ -66,7 +66,7 @@ func (m Model) renderHeader(width int) string {
 		}, "  ")
 
 		return strings.Join([]string{
-			sessionLine,
+			profileLine,
 			m.renderHeaderTabs(),
 			statsLine,
 		}, "\n")
@@ -87,7 +87,7 @@ func (m Model) renderHeaderMeta(width int) string {
 	summary := m.selectionSummary()
 
 	return lipgloss.NewStyle().Width(max(1, width)).Align(lipgloss.Right).Render(strings.Join([]string{
-		lipgloss.JoinHorizontal(lipgloss.Left, headerStyle.Render("SESSION"), " ", badgeStyle.Render(m.selectionOwnerLabel())),
+		lipgloss.JoinHorizontal(lipgloss.Left, headerStyle.Render("PROFILE"), " ", badgeStyle.Render(m.selectionOwnerLabel())),
 		"",
 		m.renderHeaderTabs(),
 		"",
@@ -150,7 +150,7 @@ func (m Model) focusLabel() string {
 }
 
 func (m Model) selectionOwnerLabel() string {
-	return "Session"
+	return m.snapshot.Profiles.Active().Name()
 }
 
 func (m Model) renderLeftPane(width int, height int) string {
@@ -190,7 +190,15 @@ func (m Model) renderPaneLabel() string {
 	case sectionCatalog:
 		return "source skills"
 	case sectionProfiles:
-		return "planned next"
+		if m.profileInputActive {
+			if m.profileInputMode == profileInputRename {
+				return "rename profile"
+			}
+
+			return "new profile"
+		}
+
+		return "profiles"
 	default:
 		return "sync status"
 	}
@@ -201,6 +209,9 @@ func (m Model) renderPaneMeta(items []item) string {
 		if m.section == sectionSources && m.sourceInputActive {
 			return "enter a GitHub tree URL"
 		}
+		if m.section == sectionProfiles && m.profileInputActive {
+			return "enter a profile name"
+		}
 		return "nothing to show yet"
 	}
 
@@ -208,7 +219,7 @@ func (m Model) renderPaneMeta(items []item) string {
 		return fmt.Sprintf("%d skills • %d selected", len(items), m.selection.DesiredCountForSource(m.activeSourceID))
 	}
 	if m.section == sectionProfiles {
-		return "profiles land next"
+		return fmt.Sprintf("%d profiles • active %s", len(items), m.snapshot.Profiles.ActiveName())
 	}
 
 	return fmt.Sprintf("%d items • cursor %d", len(items), min(m.cursor+1, len(items)))
@@ -231,6 +242,13 @@ func (m Model) renderSectionSummary(items []item) string {
 
 		return m.sourceInputValue
 	}
+	if m.section == sectionProfiles && m.profileInputActive {
+		if strings.TrimSpace(m.profileInputValue) == "" {
+			return "type profile name and press enter"
+		}
+
+		return m.profileInputValue
+	}
 
 	if len(items) == 0 {
 		return "0 items"
@@ -240,7 +258,7 @@ func (m Model) renderSectionSummary(items []item) string {
 		return fmt.Sprintf("%d of %d selected", m.selection.DesiredCountForSource(m.activeSourceID), len(items))
 	}
 	if m.section == sectionProfiles {
-		return "profiles are next"
+		return fmt.Sprintf("active %s", m.snapshot.Profiles.ActiveName())
 	}
 
 	return fmt.Sprintf("cursor %d of %d", min(m.cursor+1, len(items)), len(items))
@@ -399,7 +417,7 @@ func (m Model) renderDetailChips() string {
 	case sectionSources:
 		labels = append(labels, "github", "tree-url")
 	case sectionProfiles:
-		labels = append(labels, "planned", "profiles")
+		labels = append(labels, "profiles", m.snapshot.Profiles.ActiveName())
 	default:
 		labels = append(labels, "sync")
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -67,11 +68,27 @@ func newManifest(t *testing.T, adapter string, rootPath string, identities ...sk
 	return manifest
 }
 
-func buildSnapshot(runtime paths.Runtime, configuredSources source.Sources, discoveredSkills []catalog.Skill, manifests []skillsync.Manifest) Snapshot {
+func newProfiles(t *testing.T, activeName string, items ...profile.Profile) profile.Profiles {
+	t.Helper()
+
+	return profile.NewProfiles(activeName, items...)
+}
+
+func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+	t.Helper()
+
+	item, err := profile.New(name, identities...)
+	require.NoError(t, err)
+
+	return item
+}
+
+func buildSnapshot(runtime paths.Runtime, configuredSources source.Sources, discoveredSkills []catalog.Skill, profiles profile.Profiles, manifests []skillsync.Manifest) Snapshot {
 	return newSnapshot(
 		runtime,
 		configuredSources,
 		catalog.NewCatalog(time.Date(2026, time.March, 19, 12, 0, 0, 0, time.UTC), discoveredSkills...),
+		profiles,
 		manifests,
 	)
 }

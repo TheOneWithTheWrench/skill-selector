@@ -178,9 +178,6 @@ func (m *Model) finishRemoveSource(msg sourceRemovedMsg) {
 	if msg.result.Snapshot != nil {
 		m.applySnapshot(*msg.result.Snapshot)
 	}
-	if msg.result.Source.ID() != "" {
-		m.selection.RemoveSource(msg.result.Source.ID())
-	}
 	if _, ok := m.currentSource(); !ok {
 		m.activeSourceID = ""
 	}

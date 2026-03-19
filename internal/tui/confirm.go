@@ -48,15 +48,37 @@ func (m *Model) cancelRemoveSource() {
 }
 
 func (m Model) renderConfirmView() string {
+	title := "Remove Source?"
+	bodyTitle := m.sourceToRemove.ID()
+	bodyMeta := m.sourceToRemove.Locator()
+	bodyText := "This removes the source from the app. Any synced skills from this source stay active until you sync."
+	if m.profileRemoveConfirmActive {
+		title = "Remove Profile?"
+		bodyTitle = m.profileToRemove.Name()
+		bodyMeta = ""
+		bodyText = "This removes the profile from the app. Sources and sync state stay untouched."
+	}
+
 	lines := []string{
-		confirmTitleStyle.Render("Remove Source?"),
+		confirmTitleStyle.Render(title),
 		"",
-		confirmBodyStyle.Render(m.sourceToRemove.ID()),
-		metaStyle.Render(m.sourceToRemove.Locator()),
+		confirmBodyStyle.Render(bodyTitle),
 		"",
-		confirmBodyStyle.Render("This removes the source from the app. Any synced skills from this source stay active until you sync."),
+		confirmBodyStyle.Render(bodyText),
 		"",
 		confirmHelpStyle.Render("y/enter confirm • n/esc cancel"),
+	}
+	if bodyMeta != "" {
+		lines = []string{
+			confirmTitleStyle.Render(title),
+			"",
+			confirmBodyStyle.Render(bodyTitle),
+			metaStyle.Render(bodyMeta),
+			"",
+			confirmBodyStyle.Render(bodyText),
+			"",
+			confirmHelpStyle.Render("y/enter confirm • n/esc cancel"),
+		}
 	}
 
 	boxWidth := min(72, max(32, m.totalWidth()-8))
