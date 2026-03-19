@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/actions/workflow/status/TheOneWithTheWrench/skill-selector/release.yml?label=release)](https://github.com/TheOneWithTheWrench/skill-selector/actions/workflows/release.yml)
 [![GitHub release](https://img.shields.io/github/v/release/TheOneWithTheWrench/skill-selector)](https://github.com/TheOneWithTheWrench/skill-selector/releases)
 [![Go version](https://img.shields.io/github/go-mod/go-version/TheOneWithTheWrench/skill-selector)](https://go.dev/doc/devel/release)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TheOneWithTheWrench/skill-selector)](https://goreportcard.com/report/github.com/TheOneWithTheWrench/skill-selector)
 
 🧰 Skill Selector manages shared skills across multiple coding agents from one place.
 
