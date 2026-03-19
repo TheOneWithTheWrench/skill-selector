@@ -26,7 +26,7 @@
 - Do not let core packages depend on Bubble Tea, CLI formatting, or view models.
 - Keep filesystem, `gh`, `git`, and symlink side effects behind narrow interfaces.
 - Prefer explicit data types and functions over generic plumbing.
-- Use Cobra for the CLI now that the command surface justifies it, but keep commands as thin `RunE` wrappers around the shared app layer.
+- Use Cobra for the CLI now that the command surface justifies it, keep commands as thin `RunE` wrappers around the shared app layer, and use Fang as a presentation layer for help and errors rather than pushing styling into the core.
 - Prefer domain names over vague infrastructure names like `state` and `store` when a sharper name exists.
 - Keep file versions and JSON schemas in repository code, not in the core entities.
 - Let entities own validation and pure derivations; let services and repositories own side effects.

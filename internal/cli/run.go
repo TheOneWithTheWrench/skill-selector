@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 
+	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +22,7 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, application Applicat
 		rootCommand.SetArgs(nil)
 	}
 
-	return rootCommand.Execute()
+	return fang.Execute(context.Background(), rootCommand)
 }
 
 func helpRunE(cmd *cobra.Command, args []string) error {

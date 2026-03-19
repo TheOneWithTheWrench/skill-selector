@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -12,7 +11,6 @@ import (
 
 func main() {
 	if err := run(os.Args, os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
