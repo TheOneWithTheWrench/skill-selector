@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 )
 
@@ -61,7 +62,12 @@ func Scan(mirror source.Mirror) (Skills, error) {
 			return err
 		}
 
-		discoveredSkill, err := NewSkill(mirror.ID(), relativePath, name, description)
+		identity, err := skillidentity.New(mirror.ID(), relativePath)
+		if err != nil {
+			return err
+		}
+
+		discoveredSkill, err := NewSkill(identity, name, description)
 		if err != nil {
 			return err
 		}

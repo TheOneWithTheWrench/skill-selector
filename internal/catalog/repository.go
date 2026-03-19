@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/fileutil"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
 const repositoryVersion = 1
@@ -64,7 +65,12 @@ func (r FileRepository) Load() (Catalog, error) {
 
 	discoveredSkills := make(Skills, 0, len(stored.Skills))
 	for _, storedSkill := range stored.Skills {
-		discoveredSkill, err := NewSkill(storedSkill.SourceID, storedSkill.RelativePath, storedSkill.Name, storedSkill.Description)
+		identity, err := skillidentity.New(storedSkill.SourceID, storedSkill.RelativePath)
+		if err != nil {
+			return Catalog{}, fmt.Errorf("decode catalog file %q: %w", r.path, err)
+		}
+
+		discoveredSkill, err := NewSkill(identity, storedSkill.Name, storedSkill.Description)
 		if err != nil {
 			return Catalog{}, fmt.Errorf("decode catalog file %q: %w", r.path, err)
 		}

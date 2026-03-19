@@ -4,49 +4,44 @@ import (
 	"fmt"
 	"path"
 	"strings"
+
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 )
 
-// Skill is one discovered skill directory within a source subtree.
+// Skill combines a stable skill identity with discovered catalog metadata.
 type Skill struct {
-	sourceID     string
-	name         string
-	description  string
-	relativePath string
+	identity    skillidentity.Identity
+	name        string
+	description string
 }
 
-// NewSkill validates discovered skill metadata and normalizes its relative path.
-func NewSkill(sourceID string, relativePath string, name string, description string) (Skill, error) {
-	normalizedSourceID := strings.TrimSpace(sourceID)
-	if normalizedSourceID == "" {
-		return Skill{}, fmt.Errorf("skill source id required")
-	}
-
+// NewSkill validates discovered skill metadata for a known skill identity.
+func NewSkill(identity skillidentity.Identity, name string, description string) (Skill, error) {
 	normalizedName := strings.TrimSpace(name)
 	if normalizedName == "" {
 		return Skill{}, fmt.Errorf("skill name required")
 	}
 
-	normalizedRelativePath := normalizeRelativePath(relativePath)
-	if normalizedRelativePath == ".." || strings.HasPrefix(normalizedRelativePath, "../") || strings.HasPrefix(normalizedRelativePath, "/") {
-		return Skill{}, fmt.Errorf("skill relative path must stay within the source subtree: %q", relativePath)
-	}
-
 	return Skill{
-		sourceID:     normalizedSourceID,
-		name:         normalizedName,
-		description:  strings.TrimSpace(description),
-		relativePath: normalizedRelativePath,
+		identity:    identity,
+		name:        normalizedName,
+		description: strings.TrimSpace(description),
 	}, nil
 }
 
 // ID returns the stable identifier for the discovered skill within its source.
 func (s Skill) ID() string {
-	return s.sourceID + ":" + s.relativePath
+	return s.identity.Key()
+}
+
+// Identity returns the stable identity used to persist and reference the skill.
+func (s Skill) Identity() skillidentity.Identity {
+	return s.identity
 }
 
 // SourceID returns the source that produced the skill.
 func (s Skill) SourceID() string {
-	return s.sourceID
+	return s.identity.SourceID()
 }
 
 // Name returns the display name shown for the skill.
@@ -61,23 +56,14 @@ func (s Skill) Description() string {
 
 // RelativePath returns the skill directory path relative to the source subtree.
 func (s Skill) RelativePath() string {
-	return s.relativePath
+	return s.identity.RelativePath()
 }
 
 // FilePath returns the relative path to the skill's `SKILL.md` file.
 func (s Skill) FilePath() string {
-	if s.relativePath == "" {
+	if s.identity.RelativePath() == "" {
 		return "SKILL.md"
 	}
 
-	return path.Join(s.relativePath, "SKILL.md")
-}
-
-func normalizeRelativePath(relativePath string) string {
-	normalizedRelativePath := path.Clean(strings.TrimSpace(relativePath))
-	if normalizedRelativePath == "." {
-		return ""
-	}
-
-	return normalizedRelativePath
+	return path.Join(s.identity.RelativePath(), "SKILL.md")
 }

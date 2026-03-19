@@ -58,6 +58,7 @@
 - `Refresher` means the service that materializes or updates `Mirror` instances from their upstream `Source` definitions.
 - Provider-specific parsing should live behind source package helpers. We do not need parser interfaces until we have more than one real provider.
 - `Skill` means one discovered skill directory under a mirrored source subtree.
+- `Skill` should own a `SkillIdentity` plus catalog metadata, rather than duplicating `SourceID` and relative path fields.
 - `Skills` means the normalized collection of discovered skills.
 - `Catalog` means the indexed inventory of discovered skills plus when that inventory was generated.
 - Catalog scanning should live in an explicit scanner service or function, not on `Mirror` or `Source`.
