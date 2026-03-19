@@ -40,3 +40,35 @@ func TestNew(t *testing.T) {
 		assert.Contains(t, err.Error(), "must stay within the source subtree")
 	})
 }
+
+func TestParse(t *testing.T) {
+	t.Run("parse stable identity key", func(t *testing.T) {
+		got, err := skillidentity.Parse("source-a:reviewer")
+
+		require.NoError(t, err)
+		assert.Equal(t, "source-a", got.SourceID())
+		assert.Equal(t, "reviewer", got.RelativePath())
+	})
+
+	t.Run("parse root identity key", func(t *testing.T) {
+		got, err := skillidentity.Parse("source-a:")
+
+		require.NoError(t, err)
+		assert.Equal(t, "source-a", got.SourceID())
+		assert.Equal(t, "", got.RelativePath())
+	})
+
+	t.Run("return error when identity is empty", func(t *testing.T) {
+		_, err := skillidentity.Parse("")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "skill identity required")
+	})
+
+	t.Run("return error when separator is missing", func(t *testing.T) {
+		_, err := skillidentity.Parse("source-a")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "source:path form")
+	})
+}

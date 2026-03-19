@@ -38,6 +38,12 @@ type Clock interface {
 	Now() time.Time
 }
 
+// RefreshCatalogResult contains the source refresh report and the rebuilt catalog snapshot.
+type RefreshCatalogResult struct {
+	Sources []source.RefreshResult
+	Catalog catalog.Catalog
+}
+
 // SyncTargetsLoader discovers sync targets from the current environment.
 type SyncTargetsLoader func() ([]skillsync.Target, error)
 
@@ -324,6 +330,26 @@ func (a *App) RebuildCatalog() (catalog.Catalog, error) {
 	}
 
 	return currentCatalog, errors.Join(allErrors...)
+}
+
+// RefreshCatalog refreshes configured sources and rebuilds the catalog from the local mirrors.
+func (a *App) RefreshCatalog(ctx context.Context) (RefreshCatalogResult, error) {
+	refreshedSources, refreshErr := a.RefreshSources(ctx)
+	currentCatalog, catalogErr := a.RebuildCatalog()
+
+	return RefreshCatalogResult{
+		Sources: refreshedSources,
+		Catalog: currentCatalog,
+	}, errors.Join(refreshErr, catalogErr)
+}
+
+// ListCatalog returns the current persisted catalog snapshot.
+func (a *App) ListCatalog() (catalog.Catalog, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return catalog.Catalog{}, err
+	}
+
+	return a.catalogRepository.Load()
 }
 
 // ListSyncManifests returns the currently persisted sync ownership state.

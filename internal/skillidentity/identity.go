@@ -33,6 +33,21 @@ func New(sourceID string, relativePath string) (Identity, error) {
 	}, nil
 }
 
+// Parse reads the stable string form produced by Identity.Key.
+func Parse(value string) (Identity, error) {
+	normalizedValue := strings.TrimSpace(value)
+	if normalizedValue == "" {
+		return Identity{}, fmt.Errorf("skill identity required")
+	}
+
+	sourceID, relativePath, ok := strings.Cut(normalizedValue, ":")
+	if !ok {
+		return Identity{}, fmt.Errorf("skill identity must be in source:path form: %q", value)
+	}
+
+	return New(sourceID, relativePath)
+}
+
 // SourceID returns the source that owns the referenced skill.
 func (i Identity) SourceID() string {
 	return i.sourceID

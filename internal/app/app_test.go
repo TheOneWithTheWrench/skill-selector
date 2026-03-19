@@ -56,12 +56,18 @@ func (r *sourceRefresher) Refresh(ctx context.Context, mirror source.Mirror) (so
 }
 
 type catalogRepository struct {
-	saveErr   error
-	saveCalls []catalog.Catalog
+	loadResult catalog.Catalog
+	loadErr    error
+	saveErr    error
+	saveCalls  []catalog.Catalog
 }
 
 func (r *catalogRepository) Load() (catalog.Catalog, error) {
-	return catalog.Catalog{}, nil
+	if r.loadErr != nil {
+		return catalog.Catalog{}, r.loadErr
+	}
+
+	return r.loadResult, nil
 }
 
 func (r *catalogRepository) Save(current catalog.Catalog) error {
@@ -70,6 +76,7 @@ func (r *catalogRepository) Save(current catalog.Catalog) error {
 		return r.saveErr
 	}
 
+	r.loadResult = current
 	return nil
 }
 
@@ -394,6 +401,77 @@ func TestRebuildCatalog(t *testing.T) {
 		require.Len(t, catalogRepo.saveCalls, 1)
 		require.Len(t, got.Skills(), 1)
 		assert.Equal(t, reviewerSource.ID(), got.Skills()[0].SourceID())
+	})
+}
+
+func TestCatalog(t *testing.T) {
+	var (
+		parseSource = func(t *testing.T, rawURL string) source.Source {
+			configuredSource, err := source.Parse(rawURL)
+			require.NoError(t, err)
+			return configuredSource
+		}
+		newSkill = func(t *testing.T, sourceID string, relativePath string, name string) catalog.Skill {
+			identity, err := skillidentity.New(sourceID, relativePath)
+			require.NoError(t, err)
+
+			discoveredSkill, err := catalog.NewSkill(identity, name, name+" description")
+			require.NoError(t, err)
+			return discoveredSkill
+		}
+		newSut = func(t *testing.T, optionFuncs ...app.Option) *app.App {
+			sut, err := app.New(testRuntime(t), optionFuncs...)
+			require.NoError(t, err)
+			return sut
+		}
+	)
+
+	t.Run("list persisted catalog", func(t *testing.T) {
+		var (
+			reviewerSkill = newSkill(t, "source-a", "reviewer", "Reviewer")
+			repository    = &catalogRepository{loadResult: catalog.NewCatalog(time.Time{}, reviewerSkill)}
+			sut           = newSut(t, app.WithCatalogRepository(repository))
+		)
+
+		got, err := sut.ListCatalog()
+
+		require.NoError(t, err)
+		assert.Equal(t, catalog.Skills{reviewerSkill}, got.Skills())
+	})
+
+	t.Run("refresh catalog uses refreshed mirrors and persists rebuilt snapshot", func(t *testing.T) {
+		var (
+			ctx              = context.Background()
+			indexedAt        = time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)
+			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
+			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
+			refresher        = &sourceRefresher{}
+			catalogRepo      = &catalogRepository{}
+			sut              = newSut(
+				t,
+				app.WithSourceRepository(repository),
+				app.WithSourceRefresher(refresher),
+				app.WithCatalogRepository(catalogRepo),
+				app.WithClock(clock{now: indexedAt}),
+				app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
+					return catalog.NewSkills(newSkill(t, mirror.ID(), "reviewer", "Reviewer")), nil
+				}),
+			)
+		)
+
+		refresher.refreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
+			return source.RefreshResult{Mirror: mirror, Action: "cloned"}, nil
+		}
+
+		got, err := sut.RefreshCatalog(ctx)
+
+		require.NoError(t, err)
+		require.Len(t, got.Sources, 1)
+		assert.Equal(t, configuredSource, got.Sources[0].Mirror.Source)
+		assert.Equal(t, "cloned", got.Sources[0].Action)
+		assert.Equal(t, indexedAt, got.Catalog.IndexedAt())
+		require.Len(t, catalogRepo.saveCalls, 1)
+		assert.Equal(t, got.Catalog.Skills(), catalogRepo.saveCalls[0].Skills())
 	})
 }
 
