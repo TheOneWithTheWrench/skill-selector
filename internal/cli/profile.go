@@ -126,15 +126,25 @@ func newProfileSwitchCommand(application Application) *cobra.Command {
 	return &cobra.Command{
 		Use:   "switch <name>",
 		Short: "Switch the active saved profile",
-		Long:  "Switch the active saved profile without syncing it automatically.",
+		Long:  "Switch the active saved profile and sync its saved selection into every configured target.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			profiles, err := application.SwitchProfile(args[0])
+			result, err := application.ActivateProfile(args[0])
 			if err != nil {
-				return err
+				if result.Profiles.ActiveName() == "" {
+					return err
+				}
 			}
 
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Switched active profile to %s\n", profiles.Active().Name())
+			if _, writeErr := fmt.Fprintf(cmd.OutOrStdout(), "Activated profile %s\n", result.Profiles.Active().Name()); writeErr != nil {
+				return writeErr
+			}
+			if len(result.Sync.Targets) > 0 {
+				if writeErr := writeSyncResult(cmd.OutOrStdout(), result.Sync); writeErr != nil {
+					return writeErr
+				}
+			}
+
 			return err
 		},
 	}

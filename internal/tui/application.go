@@ -23,6 +23,7 @@ type Application interface {
 	RenameProfile(string, string) (profile.Profiles, error)
 	RemoveProfile(string) (profile.Profiles, error)
 	SwitchProfile(string) (profile.Profiles, error)
+	ActivateProfile(string) (app.ActivateProfileResult, error)
 	SaveActiveProfileSelection(skill_identity.Identities) (profile.Profiles, error)
 	SyncSkillIdentities(skill_identity.Identities) (skillsync.Result, error)
 	ListSyncManifests() ([]skillsync.Manifest, error)

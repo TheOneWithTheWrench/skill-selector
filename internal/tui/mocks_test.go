@@ -26,6 +26,9 @@ var _ tui.Application = &ApplicationMock{}
 //
 //		// make and configure a mocked tui.Application
 //		mockedApplication := &ApplicationMock{
+//			ActivateProfileFunc: func(s string) (app.ActivateProfileResult, error) {
+//				panic("mock out the ActivateProfile method")
+//			},
 //			AddSourceFunc: func(s string) (source.Sources, source.Source, error) {
 //				panic("mock out the AddSource method")
 //			},
@@ -72,6 +75,9 @@ var _ tui.Application = &ApplicationMock{}
 //
 //	}
 type ApplicationMock struct {
+	// ActivateProfileFunc mocks the ActivateProfile method.
+	ActivateProfileFunc func(s string) (app.ActivateProfileResult, error)
+
 	// AddSourceFunc mocks the AddSource method.
 	AddSourceFunc func(s string) (source.Sources, source.Source, error)
 
@@ -113,6 +119,11 @@ type ApplicationMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ActivateProfile holds details about calls to the ActivateProfile method.
+		ActivateProfile []struct {
+			// S is the s argument value.
+			S string
+		}
 		// AddSource holds details about calls to the AddSource method.
 		AddSource []struct {
 			// S is the s argument value.
@@ -173,6 +184,7 @@ type ApplicationMock struct {
 			Identities skill_identity.Identities
 		}
 	}
+	lockActivateProfile            sync.RWMutex
 	lockAddSource                  sync.RWMutex
 	lockCreateProfile              sync.RWMutex
 	lockListCatalog                sync.RWMutex
@@ -186,6 +198,38 @@ type ApplicationMock struct {
 	lockSaveActiveProfileSelection sync.RWMutex
 	lockSwitchProfile              sync.RWMutex
 	lockSyncSkillIdentities        sync.RWMutex
+}
+
+// ActivateProfile calls ActivateProfileFunc.
+func (mock *ApplicationMock) ActivateProfile(s string) (app.ActivateProfileResult, error) {
+	if mock.ActivateProfileFunc == nil {
+		panic("ApplicationMock.ActivateProfileFunc: method is nil but Application.ActivateProfile was just called")
+	}
+	callInfo := struct {
+		S string
+	}{
+		S: s,
+	}
+	mock.lockActivateProfile.Lock()
+	mock.calls.ActivateProfile = append(mock.calls.ActivateProfile, callInfo)
+	mock.lockActivateProfile.Unlock()
+	return mock.ActivateProfileFunc(s)
+}
+
+// ActivateProfileCalls gets all the calls that were made to ActivateProfile.
+// Check the length with:
+//
+//	len(mockedApplication.ActivateProfileCalls())
+func (mock *ApplicationMock) ActivateProfileCalls() []struct {
+	S string
+} {
+	var calls []struct {
+		S string
+	}
+	mock.lockActivateProfile.RLock()
+	calls = mock.calls.ActivateProfile
+	mock.lockActivateProfile.RUnlock()
+	return calls
 }
 
 // AddSource calls AddSourceFunc.

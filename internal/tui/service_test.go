@@ -44,6 +44,9 @@ func TestService(t *testing.T) {
 					RenameProfileFunc: func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					RemoveProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					SwitchProfileFunc: func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					ActivateProfileFunc: func(string) (app.ActivateProfileResult, error) {
+						return app.ActivateProfileResult{Profiles: profile.DefaultProfiles()}, nil
+					},
 					SaveActiveProfileSelectionFunc: func(skill_identity.Identities) (profile.Profiles, error) {
 						return profile.DefaultProfiles(), nil
 					},
@@ -116,6 +119,52 @@ func TestService(t *testing.T) {
 		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
 		assert.Len(t, deps.Application.SaveActiveProfileSelectionCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+	})
+
+	t.Run("switch profile activates and syncs the saved selection", func(t *testing.T) {
+		var (
+			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
+			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
+			manifest         = newManifest(t, "ampcode", "/tmp/agents", identity)
+			deps             = newDefaultDependencies()
+			sut              = newSut(t, deps)
+		)
+
+		deps.Application.ActivateProfileFunc = func(string) (app.ActivateProfileResult, error) {
+			return app.ActivateProfileResult{
+				Profiles: profile.NewProfiles("reviewer", mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer", identity)),
+				Sync: skillsync.Result{
+					DesiredCount: 1,
+					Targets:      []skillsync.TargetResult{{Adapter: "ampcode", RootPath: "/tmp/agents", Linked: 1}},
+				},
+			}, errors.New("boom")
+		}
+		deps.Application.ListSourcesFunc = func() (source.Sources, error) {
+			return source.Sources{configuredSource}, nil
+		}
+		deps.Application.ListCatalogFunc = func() (catalog.Catalog, error) {
+			return catalog.NewCatalog(time.Now(), newSkill(t, configuredSource.ID(), "reviewer", "Reviewer")), nil
+		}
+		deps.Application.ListProfilesFunc = func() (profile.Profiles, error) {
+			return profile.NewProfiles("reviewer", mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer", identity)), nil
+		}
+		deps.Application.ListSyncManifestsFunc = func() ([]skillsync.Manifest, error) {
+			return []skillsync.Manifest{manifest}, nil
+		}
+
+		result, err := sut.SwitchProfile(newCtx(), "reviewer")
+
+		require.Error(t, err)
+		require.NotNil(t, result.Snapshot)
+		assert.Contains(t, result.Summary, "Activated profile reviewer")
+		assert.Contains(t, result.Summary, "Synced 1 selected skill")
+		require.Len(t, deps.Application.ActivateProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.ActivateProfileCalls()[0].S)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+		require.Len(t, deps.Application.ListSourcesCalls(), 1)
+		require.Len(t, deps.Application.ListCatalogCalls(), 1)
+		require.Len(t, deps.Application.ListProfilesCalls(), 1)
+		require.Len(t, deps.Application.ListSyncManifestsCalls(), 1)
 	})
 
 	t.Run("add source refreshes and reloads the snapshot", func(t *testing.T) {

@@ -46,6 +46,12 @@ type RefreshCatalogResult struct {
 	Catalog catalog.Catalog
 }
 
+// ActivateProfileResult contains the persisted active profile state together with the sync report produced while activating it.
+type ActivateProfileResult struct {
+	Profiles profile.Profiles
+	Sync     skillsync.Result
+}
+
 // SyncTargetsLoader discovers sync targets from the current environment.
 type SyncTargetsLoader func() ([]skillsync.Target, error)
 
@@ -434,6 +440,34 @@ func (a *App) SwitchProfile(name string) (profile.Profiles, error) {
 	return nextProfiles, nil
 }
 
+// ActivateProfile changes the active profile and syncs targets to that profile's saved selection.
+func (a *App) ActivateProfile(name string) (ActivateProfileResult, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return ActivateProfileResult{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return ActivateProfileResult{}, err
+	}
+
+	nextProfiles, err := profiles.Switch(name)
+	if err != nil {
+		return ActivateProfileResult{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return ActivateProfileResult{}, err
+	}
+
+	syncResult, syncErr := a.syncSkillIdentities(nextProfiles.Active().Selected())
+
+	return ActivateProfileResult{
+		Profiles: nextProfiles,
+		Sync:     syncResult,
+	}, syncErr
+}
+
 // SaveActiveProfileSelection persists the saved selection owned by the active profile.
 func (a *App) SaveActiveProfileSelection(desired skill_identity.Identities) (profile.Profiles, error) {
 	if err := a.paths.EnsureRuntimeDirs(); err != nil {
@@ -471,6 +505,11 @@ func (a *App) SyncSkillIdentities(desired skill_identity.Identities) (skillsync.
 	if err := a.paths.EnsureRuntimeDirs(); err != nil {
 		return skillsync.Result{}, err
 	}
+
+	return a.syncSkillIdentities(desired)
+}
+
+func (a *App) syncSkillIdentities(desired skill_identity.Identities) (skillsync.Result, error) {
 
 	targets, err := a.syncTargetsLoader()
 	if err != nil {

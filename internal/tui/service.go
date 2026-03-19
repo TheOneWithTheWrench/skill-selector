@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/TheOneWithTheWrench/skill-selector/internal/app"
 	"github.com/TheOneWithTheWrench/skill-selector/internal/paths"
 	"github.com/TheOneWithTheWrench/skill-selector/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-selector/internal/skill_identity"
@@ -153,18 +154,14 @@ func (s Service) RemoveProfile(ctx context.Context, name string) (ProfilesAction
 	}, loadErr
 }
 
-// SwitchProfile changes the active profile and reloads the TUI snapshot without syncing it automatically.
+// SwitchProfile changes the active profile, syncs its saved selection, and reloads the TUI snapshot.
 func (s Service) SwitchProfile(ctx context.Context, name string) (ProfilesActionResult, error) {
-	nextProfiles, err := s.application.SwitchProfile(name)
-	if err != nil {
-		return ProfilesActionResult{}, err
-	}
-
+	result, activateErr := s.application.ActivateProfile(name)
 	snapshot, loadErr := s.loadSnapshot(ctx)
 	return ProfilesActionResult{
 		Snapshot: snapshot,
-		Summary:  fmt.Sprintf("Switched active profile to %s", nextProfiles.Active().Name()),
-	}, loadErr
+		Summary:  summarizeActivatedProfile(name, result),
+	}, errors.Join(activateErr, loadErr)
 }
 
 // Sync reconciles the desired selection and reloads the persisted sync state.
@@ -219,6 +216,20 @@ func summarizeProfileAction(action string, profiles profile.Profiles, name strin
 	}
 
 	return fmt.Sprintf("%s profile %s", action, item.Name())
+}
+
+func summarizeActivatedProfile(name string, result app.ActivateProfileResult) string {
+	profileName := result.Profiles.ActiveName()
+	if profileName == "" {
+		profileName = normalizeProfileName(name)
+	}
+
+	summary := fmt.Sprintf("Activated profile %s", profileName)
+	if len(result.Sync.Targets) > 0 {
+		summary += " • " + result.Sync.Summary()
+	}
+
+	return summary
 }
 
 func normalizeProfileName(name string) string {

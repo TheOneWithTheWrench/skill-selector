@@ -28,16 +28,19 @@ func TestRun(t *testing.T) {
 		newDefaultDependencies = func() *dependencies {
 			return &dependencies{
 				Application: &ApplicationMock{
-					ListSourcesFunc:         func() (source.Sources, error) { return nil, nil },
-					AddSourceFunc:           func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
-					RemoveSourceFunc:        func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
-					RefreshCatalogFunc:      func(context.Context) (app.RefreshCatalogResult, error) { return app.RefreshCatalogResult{}, nil },
-					ListCatalogFunc:         func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
-					ListProfilesFunc:        func() (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					CreateProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					RenameProfileFunc:       func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					RemoveProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
-					SwitchProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					ListSourcesFunc:    func() (source.Sources, error) { return nil, nil },
+					AddSourceFunc:      func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
+					RemoveSourceFunc:   func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
+					RefreshCatalogFunc: func(context.Context) (app.RefreshCatalogResult, error) { return app.RefreshCatalogResult{}, nil },
+					ListCatalogFunc:    func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+					ListProfilesFunc:   func() (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					CreateProfileFunc:  func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RenameProfileFunc:  func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RemoveProfileFunc:  func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					SwitchProfileFunc:  func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					ActivateProfileFunc: func(string) (app.ActivateProfileResult, error) {
+						return app.ActivateProfileResult{Profiles: profile.DefaultProfiles()}, nil
+					},
 					SyncSkillIdentitiesFunc: func(skill_identity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
 					ListSyncManifestsFunc:   func() ([]skillsync.Manifest, error) { return nil, nil },
 				},
@@ -335,20 +338,28 @@ func TestRun(t *testing.T) {
 			deps = newDefaultDependencies()
 		)
 
-		deps.Application.SwitchProfileFunc = func(string) (profile.Profiles, error) {
-			return profile.NewProfiles("reviewer", mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer")), nil
+		deps.Application.ActivateProfileFunc = func(string) (app.ActivateProfileResult, error) {
+			return app.ActivateProfileResult{
+				Profiles: profile.NewProfiles("reviewer", mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer")),
+				Sync: skillsync.Result{
+					DesiredCount: 0,
+					Targets:      []skillsync.TargetResult{{Adapter: "ampcode", RootPath: "/tmp/agents", Removed: 1}},
+				},
+			}, nil
 		}
 
 		stdout, _, err := run(t, deps, "profile", "switch", "reviewer")
 
 		require.NoError(t, err)
-		assert.Contains(t, stdout, "Switched active profile to reviewer")
-		require.Len(t, deps.Application.SwitchProfileCalls(), 1)
-		assert.Equal(t, "reviewer", deps.Application.SwitchProfileCalls()[0].S)
+		assert.Contains(t, stdout, "Activated profile reviewer")
+		assert.Contains(t, stdout, "Cleared synced skills")
+		require.Len(t, deps.Application.ActivateProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.ActivateProfileCalls()[0].S)
 		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
 		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
 		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
 		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
 	})
 
 	t.Run("refresh catalog and print source actions", func(t *testing.T) {

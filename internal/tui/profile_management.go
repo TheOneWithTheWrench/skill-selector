@@ -374,6 +374,6 @@ func renderProfileDetail(currentProfile profile.Profile, active bool) string {
 		return strings.Join(lines, "\n")
 	}
 
-	lines = append(lines, "", "Press space to switch to this profile.")
+	lines = append(lines, "", "Press space to activate and sync this profile.")
 	return strings.Join(lines, "\n")
 }
