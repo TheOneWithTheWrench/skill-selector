@@ -298,6 +298,57 @@ func TestModel(t *testing.T) {
 		assert.Len(t, deps.workflow.syncCalls, 0)
 	})
 
+	t.Run("a selects every skill in the current source without syncing", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies(t)
+			sut  = newSut(deps)
+		)
+
+		sut = sendKey(t, sut, tea.KeyPressMsg{Code: 'a', Text: "a"})
+
+		summary := sut.selectionSummary()
+
+		assert.Equal(t, 6, summary.SelectedCount)
+		assert.Equal(t, 6, summary.PendingAddCount)
+		assert.Equal(t, 0, summary.PendingDelCount)
+		assert.Equal(t, 6, sut.selection.DesiredCountForSource(deps.snapshot.Sources[0].ID()))
+		assert.Contains(t, sut.statusMessage, "Selected all skills in source")
+		assert.Len(t, deps.workflow.syncCalls, 0)
+	})
+
+	t.Run("c clears every skill in the current source without syncing", func(t *testing.T) {
+		var (
+			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
+			identities       = skill_identity.NewIdentities(
+				newIdentity(t, configuredSource.ID(), "skill-01"),
+				newIdentity(t, configuredSource.ID(), "skill-02"),
+				newIdentity(t, configuredSource.ID(), "skill-03"),
+			)
+			deps = newDefaultDependencies(t)
+			sut  Model
+		)
+
+		deps.snapshot = buildSnapshot(
+			deps.snapshot.Runtime,
+			source.Sources{configuredSource},
+			newSkills(t, configuredSource.ID(), 6),
+			newProfiles(t, "Default", mustProfile(t, "Default", identities...)),
+			nil,
+		)
+		sut = newSut(deps)
+
+		sut = sendKey(t, sut, tea.KeyPressMsg{Code: 'c', Text: "c"})
+
+		summary := sut.selectionSummary()
+
+		assert.Equal(t, 0, summary.SelectedCount)
+		assert.Equal(t, 0, summary.PendingAddCount)
+		assert.Equal(t, 3, summary.PendingDelCount)
+		assert.Equal(t, 0, sut.selection.DesiredCountForSource(configuredSource.ID()))
+		assert.Contains(t, sut.statusMessage, "Cleared source selection")
+		assert.Len(t, deps.workflow.syncCalls, 0)
+	})
+
 	t.Run("s starts sync when workflow exists", func(t *testing.T) {
 		var (
 			deps = newDefaultDependencies(t)

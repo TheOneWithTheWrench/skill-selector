@@ -173,7 +173,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.toggleCurrentCatalogSkill()
 		case "a":
+			if m.section == sectionCatalog {
+				m.addCurrentSourceSkills()
+				return m, nil
+			}
 			m.beginCreateInput()
+		case "c":
+			if m.section == sectionCatalog {
+				m.clearCurrentSourceSkills()
+			}
 		case "d":
 			m.beginRemoveCurrentItem()
 		case "e":

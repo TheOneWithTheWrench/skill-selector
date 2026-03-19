@@ -89,7 +89,7 @@ func (m Model) contextHelpItems() []helpItem {
 	case sectionSources:
 		return []helpItem{{Key: "enter", Desc: "browse"}, {Key: "a", Desc: "add"}, {Key: "d", Desc: "remove"}, {Key: "r/R", Desc: "refresh"}}
 	case sectionCatalog:
-		return []helpItem{{Key: "space", Desc: "toggle"}, {Key: "s", Desc: "sync"}, {Key: "esc", Desc: "back"}}
+		return []helpItem{{Key: "space", Desc: "toggle"}, {Key: "a", Desc: "add all"}, {Key: "c", Desc: "clear all"}, {Key: "s", Desc: "sync"}, {Key: "esc", Desc: "back"}}
 	case sectionProfiles:
 		return []helpItem{{Key: "space", Desc: "switch"}, {Key: "a", Desc: "create"}, {Key: "e", Desc: "rename"}, {Key: "d", Desc: "remove"}}
 	default:

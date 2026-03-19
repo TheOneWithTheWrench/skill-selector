@@ -84,6 +84,18 @@ func (s *draftSelection) Toggle(identity skill_identity.Identity) {
 	s.desired[key] = identity
 }
 
+func (s *draftSelection) Add(identities ...skill_identity.Identity) {
+	for _, identity := range skill_identity.NewIdentities(identities...) {
+		s.desired[identity.Key()] = identity
+	}
+}
+
+func (s *draftSelection) Remove(identities ...skill_identity.Identity) {
+	for _, identity := range skill_identity.NewIdentities(identities...) {
+		delete(s.desired, identity.Key())
+	}
+}
+
 func (s *draftSelection) ReplaceBaseline(baseline skill_identity.Identities) {
 	s.baseline = identityMap(baseline)
 }
@@ -139,6 +151,52 @@ func (m *Model) toggleCurrentCatalogSkill() {
 	m.selection.Toggle(discoveredSkill.Identity())
 
 	m.statusMessage = "Selection updated"
+	if summary := m.selectionSummary(); summary.Dirty() {
+		m.statusMessage += " • " + summary.PendingLabel()
+	}
+}
+
+func (m *Model) addCurrentSourceSkills() {
+	if m.section != sectionCatalog || m.activeSourceID == "" {
+		return
+	}
+
+	skills := m.sourceSkills(m.activeSourceID)
+	if len(skills) == 0 {
+		m.statusMessage = "No skills to add"
+		return
+	}
+
+	identities := make(skill_identity.Identities, 0, len(skills))
+	for _, discoveredSkill := range skills {
+		identities = append(identities, discoveredSkill.Identity())
+	}
+
+	m.selection.Add(identities...)
+	m.statusMessage = "Selected all skills in source"
+	if summary := m.selectionSummary(); summary.Dirty() {
+		m.statusMessage += " • " + summary.PendingLabel()
+	}
+}
+
+func (m *Model) clearCurrentSourceSkills() {
+	if m.section != sectionCatalog || m.activeSourceID == "" {
+		return
+	}
+
+	skills := m.sourceSkills(m.activeSourceID)
+	if len(skills) == 0 {
+		m.statusMessage = "No skills to clear"
+		return
+	}
+
+	identities := make(skill_identity.Identities, 0, len(skills))
+	for _, discoveredSkill := range skills {
+		identities = append(identities, discoveredSkill.Identity())
+	}
+
+	m.selection.Remove(identities...)
+	m.statusMessage = "Cleared source selection"
 	if summary := m.selectionSummary(); summary.Dirty() {
 		m.statusMessage += " • " + summary.PendingLabel()
 	}
