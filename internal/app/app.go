@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/agent"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
@@ -185,9 +186,7 @@ func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 	}
 
 	if opts.syncTargetsLoader == nil {
-		opts.syncTargetsLoader = func() ([]skillsync.Target, error) {
-			return nil, nil
-		}
+		opts.syncTargetsLoader = agent.DefaultTargets
 	}
 
 	if opts.clock == nil {
