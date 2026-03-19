@@ -15,31 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type syncManifestRepository struct {
-	loadResult []skillsync.Manifest
-	loadErr    error
-	saveErr    error
-	saveCalls  []skillsync.Manifest
-}
-
-func (r *syncManifestRepository) LoadAll() ([]skillsync.Manifest, error) {
-	if r.loadErr != nil {
-		return nil, r.loadErr
-	}
-
-	return append([]skillsync.Manifest(nil), r.loadResult...), nil
-}
-
-func (r *syncManifestRepository) Save(manifest skillsync.Manifest) error {
-	r.saveCalls = append(r.saveCalls, manifest)
-	if r.saveErr != nil {
-		return r.saveErr
-	}
-
-	r.loadResult = append([]skillsync.Manifest(nil), r.saveCalls...)
-	return nil
-}
-
 func TestListSyncManifests(t *testing.T) {
 	var (
 		newSut = func(t *testing.T, optionFuncs ...app.Option) *app.App {
@@ -53,7 +28,10 @@ func TestListSyncManifests(t *testing.T) {
 		manifest, err := skillsync.NewManifest("opencode", "/tmp/opencode")
 		require.NoError(t, err)
 
-		repository := &syncManifestRepository{loadResult: []skillsync.Manifest{manifest}}
+		repository := &SyncManifestRepositoryMock{
+			LoadAllFunc: func() ([]skillsync.Manifest, error) { return []skillsync.Manifest{manifest}, nil },
+			SaveFunc:    func(skillsync.Manifest) error { return nil },
+		}
 		sut := newSut(t, app.WithSyncManifestRepository(repository))
 
 		got, err := sut.ListSyncManifests()
@@ -95,11 +73,23 @@ func TestSyncSkillIdentities(t *testing.T) {
 		var (
 			runtime          = testRuntime(t)
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
-			manifestRepo     = &syncManifestRepository{}
-			targetRoot       = filepath.Join(t.TempDir(), "opencode")
-			target           = newTarget(t, "opencode", targetRoot)
-			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(configuredSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			persistedManifests []skillsync.Manifest
+			manifestRepo       = &SyncManifestRepositoryMock{
+				LoadAllFunc: func() ([]skillsync.Manifest, error) {
+					return append([]skillsync.Manifest(nil), persistedManifests...), nil
+				},
+				SaveFunc: func(manifest skillsync.Manifest) error {
+					persistedManifests = append(persistedManifests, manifest)
+					return nil
+				},
+			}
+			targetRoot = filepath.Join(t.TempDir(), "opencode")
+			target     = newTarget(t, "opencode", targetRoot)
+			identity   = newIdentity(t, configuredSource.ID(), "reviewer")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, runtime.SourcesDir)
@@ -122,8 +112,8 @@ func TestSyncSkillIdentities(t *testing.T) {
 		require.Len(t, got.Targets, 1)
 		assert.Equal(t, 1, got.Targets[0].Linked)
 		require.Len(t, got.Manifests, 1)
-		require.Len(t, manifestRepo.saveCalls, 1)
-		assert.Equal(t, skillidentity.NewIdentities(identity), manifestRepo.saveCalls[0].Identities())
+		require.Len(t, manifestRepo.SaveCalls(), 1)
+		assert.Equal(t, skillidentity.NewIdentities(identity), manifestRepo.SaveCalls()[0].Manifest.Identities())
 
 		linkTarget, err := os.Readlink(filepath.Join(targetRoot, "reviewer"))
 		require.NoError(t, err)
@@ -134,8 +124,11 @@ func TestSyncSkillIdentities(t *testing.T) {
 		var (
 			expectedErr  = errors.New("target load failed")
 			runtime      = testRuntime(t)
-			manifestRepo = &syncManifestRepository{}
-			sut          = newSut(
+			manifestRepo = &SyncManifestRepositoryMock{
+				LoadAllFunc: func() ([]skillsync.Manifest, error) { return nil, nil },
+				SaveFunc:    func(skillsync.Manifest) error { return nil },
+			}
+			sut = newSut(
 				t,
 				runtime,
 				app.WithSyncManifestRepository(manifestRepo),
@@ -155,12 +148,18 @@ func TestSyncSkillIdentities(t *testing.T) {
 		var (
 			runtime          = testRuntime(t)
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
-			expectedErr      = errors.New("save failed")
-			manifestRepo     = &syncManifestRepository{saveErr: expectedErr}
-			targetRoot       = filepath.Join(t.TempDir(), "opencode")
-			target           = newTarget(t, "opencode", targetRoot)
-			identity         = newIdentity(t, configuredSource.ID(), "reviewer")
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(configuredSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			expectedErr  = errors.New("save failed")
+			manifestRepo = &SyncManifestRepositoryMock{
+				LoadAllFunc: func() ([]skillsync.Manifest, error) { return nil, nil },
+				SaveFunc:    func(skillsync.Manifest) error { return expectedErr },
+			}
+			targetRoot = filepath.Join(t.TempDir(), "opencode")
+			target     = newTarget(t, "opencode", targetRoot)
+			identity   = newIdentity(t, configuredSource.ID(), "reviewer")
 		)
 
 		mirror, err := source.NewMirror(configuredSource, runtime.SourcesDir)
@@ -182,6 +181,6 @@ func TestSyncSkillIdentities(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, expectedErr)
 		require.Len(t, got.Manifests, 1)
-		require.Len(t, manifestRepo.saveCalls, 1)
+		require.Len(t, manifestRepo.SaveCalls(), 1)
 	})
 }

@@ -118,6 +118,7 @@ Package rule:
 ## Testing style
 - Use `go-fly` as the bar for package shape and focused tests.
 - Use `go-liga` as the bar for helper patterns and assertion quality.
+- Prefer `moq` with a package-local `gen.go` and generated `mocks_test.go` over handwritten mock structs when the dependency is an interface.
 - Prefer helpers like `newSut`, `newCtx`, and `newDefaultDependencies`.
 - Keep failure cases before happy path.
 - Prefer blackbox package tests where practical.

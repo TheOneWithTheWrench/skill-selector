@@ -17,78 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type sourceRepository struct {
-	loadResult source.Sources
-	loadErr    error
-	saveErr    error
-	saveCalls  []source.Sources
-}
-
-func (r *sourceRepository) Load() (source.Sources, error) {
-	if r.loadErr != nil {
-		return nil, r.loadErr
-	}
-
-	return r.loadResult, nil
-}
-
-func (r *sourceRepository) Save(configuredSources source.Sources) error {
-	r.saveCalls = append(r.saveCalls, configuredSources)
-	if r.saveErr != nil {
-		return r.saveErr
-	}
-
-	r.loadResult = configuredSources
-	return nil
-}
-
-type sourceRefresher struct {
-	refreshFunc func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error)
-	calls       []source.Mirror
-}
-
-func (r *sourceRefresher) Refresh(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
-	r.calls = append(r.calls, mirror)
-	if r.refreshFunc != nil {
-		return r.refreshFunc(ctx, mirror)
-	}
-
-	return source.RefreshResult{Mirror: mirror}, nil
-}
-
-type catalogRepository struct {
-	loadResult catalog.Catalog
-	loadErr    error
-	saveErr    error
-	saveCalls  []catalog.Catalog
-}
-
-func (r *catalogRepository) Load() (catalog.Catalog, error) {
-	if r.loadErr != nil {
-		return catalog.Catalog{}, r.loadErr
-	}
-
-	return r.loadResult, nil
-}
-
-func (r *catalogRepository) Save(current catalog.Catalog) error {
-	r.saveCalls = append(r.saveCalls, current)
-	if r.saveErr != nil {
-		return r.saveErr
-	}
-
-	r.loadResult = current
-	return nil
-}
-
-type clock struct {
-	now time.Time
-}
-
-func (c clock) Now() time.Time {
-	return c.now
-}
-
 func TestNew(t *testing.T) {
 	t.Run("create app with default dependencies", func(t *testing.T) {
 		sut, err := app.New(testRuntime(t))
@@ -100,17 +28,30 @@ func TestNew(t *testing.T) {
 	t.Run("create app with injected dependencies", func(t *testing.T) {
 		sut, err := app.New(
 			testRuntime(t),
-			app.WithSourceRepository(&sourceRepository{}),
-			app.WithSourceRefresher(&sourceRefresher{}),
-			app.WithCatalogRepository(&catalogRepository{}),
+			app.WithSourceRepository(&SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return nil, nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}),
+			app.WithSourceRefresher(&SourceRefresherMock{
+				RefreshFunc: func(context.Context, source.Mirror) (source.RefreshResult, error) { return source.RefreshResult{}, nil },
+			}),
+			app.WithCatalogRepository(&CatalogRepositoryMock{
+				LoadFunc: func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+				SaveFunc: func(catalog.Catalog) error { return nil },
+			}),
 			app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
 				return nil, nil
 			}),
-			app.WithSyncManifestRepository(&syncManifestRepository{}),
+			app.WithSyncManifestRepository(&SyncManifestRepositoryMock{
+				LoadAllFunc: func() ([]skillsync.Manifest, error) { return nil, nil },
+				SaveFunc:    func(skillsync.Manifest) error { return nil },
+			}),
 			app.WithSyncTargetsLoader(func() ([]skillsync.Target, error) {
 				return nil, nil
 			}),
-			app.WithClock(clock{now: time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)}),
+			app.WithClock(&ClockMock{NowFunc: func() time.Time {
+				return time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)
+			}}),
 		)
 
 		require.NoError(t, err)
@@ -135,8 +76,12 @@ func TestSources(t *testing.T) {
 	t.Run("list sources", func(t *testing.T) {
 		var (
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
-			sut              = newSut(t, app.WithSourceRepository(repository))
+			currentSources   = source.NewSources(configuredSource)
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return currentSources, nil },
+				SaveFunc: func(configuredSources source.Sources) error { currentSources = configuredSources; return nil },
+			}
+			sut = newSut(t, app.WithSourceRepository(repository))
 		)
 
 		got, err := sut.ListSources()
@@ -149,8 +94,12 @@ func TestSources(t *testing.T) {
 		var (
 			locator          = "https://github.com/anthropics/skills/tree/main/skills"
 			configuredSource = parseSource(t, locator)
-			repository       = &sourceRepository{loadResult: source.NewSources()}
-			sut              = newSut(t, app.WithSourceRepository(repository))
+			currentSources   source.Sources
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return currentSources, nil },
+				SaveFunc: func(configuredSources source.Sources) error { currentSources = configuredSources; return nil },
+			}
+			sut = newSut(t, app.WithSourceRepository(repository))
 		)
 
 		configuredSources, addedSource, err := sut.AddSource(locator)
@@ -158,8 +107,8 @@ func TestSources(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, configuredSource, addedSource)
 		assert.Equal(t, source.Sources{configuredSource}, configuredSources)
-		require.Len(t, repository.saveCalls, 1)
-		assert.Equal(t, source.Sources{configuredSource}, repository.saveCalls[0])
+		require.Len(t, repository.SaveCalls(), 1)
+		assert.Equal(t, source.Sources{configuredSource}, repository.SaveCalls()[0].Sources)
 
 		loadedSources, err := sut.ListSources()
 		require.NoError(t, err)
@@ -170,8 +119,12 @@ func TestSources(t *testing.T) {
 		var (
 			locator          = "https://github.com/anthropics/skills/tree/main/skills"
 			configuredSource = parseSource(t, locator)
-			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
-			sut              = newSut(t, app.WithSourceRepository(repository))
+			currentSources   = source.NewSources(configuredSource)
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return currentSources, nil },
+				SaveFunc: func(configuredSources source.Sources) error { currentSources = configuredSources; return nil },
+			}
+			sut = newSut(t, app.WithSourceRepository(repository))
 		)
 
 		configuredSources, removedSource, err := sut.RemoveSource(locator)
@@ -179,15 +132,18 @@ func TestSources(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, configuredSource, removedSource)
 		assert.Nil(t, configuredSources)
-		require.Len(t, repository.saveCalls, 1)
-		assert.Nil(t, repository.saveCalls[0])
+		require.Len(t, repository.SaveCalls(), 1)
+		assert.Nil(t, repository.SaveCalls()[0].Sources)
 	})
 
 	t.Run("return repository load error while adding source", func(t *testing.T) {
 		var (
 			expectedErr = errors.New("load failed")
-			repository  = &sourceRepository{loadErr: expectedErr}
-			sut         = newSut(t, app.WithSourceRepository(repository))
+			repository  = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return nil, expectedErr },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			sut = newSut(t, app.WithSourceRepository(repository))
 		)
 
 		_, _, err := sut.AddSource("https://github.com/anthropics/skills/tree/main/skills")
@@ -200,9 +156,9 @@ func TestSources(t *testing.T) {
 		var (
 			expectedErr      = errors.New("save failed")
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			repository       = &sourceRepository{
-				loadResult: source.NewSources(configuredSource),
-				saveErr:    expectedErr,
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(configuredSource), nil },
+				SaveFunc: func(source.Sources) error { return expectedErr },
 			}
 			sut = newSut(t, app.WithSourceRepository(repository))
 		)
@@ -233,12 +189,15 @@ func TestRefreshSources(t *testing.T) {
 			ctx            = context.Background()
 			rootSource     = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			reviewerSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills/reviewer")
-			repository     = &sourceRepository{loadResult: source.NewSources(reviewerSource, rootSource)}
-			refresher      = &sourceRefresher{}
-			sut            = newSut(t, app.WithSourceRepository(repository), app.WithSourceRefresher(refresher))
+			repository     = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(reviewerSource, rootSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			refresher = &SourceRefresherMock{}
+			sut       = newSut(t, app.WithSourceRepository(repository), app.WithSourceRefresher(refresher))
 		)
 
-		refresher.refreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
+		refresher.RefreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
 			action := "cloned"
 			if mirror.ID() == reviewerSource.ID() {
 				action = "pulled"
@@ -255,7 +214,7 @@ func TestRefreshSources(t *testing.T) {
 		assert.Equal(t, "cloned", got[0].Action)
 		assert.Equal(t, reviewerSource, got[1].Mirror.Source)
 		assert.Equal(t, "pulled", got[1].Action)
-		require.Len(t, refresher.calls, 2)
+		require.Len(t, refresher.RefreshCalls(), 2)
 	})
 
 	t.Run("continue after refresh error and return joined error", func(t *testing.T) {
@@ -263,12 +222,15 @@ func TestRefreshSources(t *testing.T) {
 			ctx            = context.Background()
 			rootSource     = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			reviewerSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills/reviewer")
-			repository     = &sourceRepository{loadResult: source.NewSources(reviewerSource, rootSource)}
-			refresher      = &sourceRefresher{}
-			sut            = newSut(t, app.WithSourceRepository(repository), app.WithSourceRefresher(refresher))
+			repository     = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(reviewerSource, rootSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			refresher = &SourceRefresherMock{}
+			sut       = newSut(t, app.WithSourceRepository(repository), app.WithSourceRefresher(refresher))
 		)
 
-		refresher.refreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
+		refresher.RefreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
 			if mirror.ID() == rootSource.ID() {
 				return source.RefreshResult{}, errors.New("clone failed")
 			}
@@ -315,13 +277,20 @@ func TestRebuildCatalog(t *testing.T) {
 			indexedAt      = time.Date(2026, time.March, 18, 12, 0, 0, 0, time.FixedZone("CEST", 2*60*60))
 			rootSource     = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			reviewerSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills/reviewer")
-			repository     = &sourceRepository{loadResult: source.NewSources(reviewerSource, rootSource)}
-			catalogRepo    = &catalogRepository{}
-			sut            = newSut(
+			repository     = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(reviewerSource, rootSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			persistedCatalog catalog.Catalog
+			catalogRepo      = &CatalogRepositoryMock{
+				LoadFunc: func() (catalog.Catalog, error) { return persistedCatalog, nil },
+				SaveFunc: func(current catalog.Catalog) error { persistedCatalog = current; return nil },
+			}
+			sut = newSut(
 				t,
 				app.WithSourceRepository(repository),
 				app.WithCatalogRepository(catalogRepo),
-				app.WithClock(clock{now: indexedAt}),
+				app.WithClock(&ClockMock{NowFunc: func() time.Time { return indexedAt }}),
 				app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
 					switch mirror.ID() {
 					case rootSource.ID():
@@ -339,9 +308,9 @@ func TestRebuildCatalog(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, indexedAt.UTC(), got.IndexedAt())
-		require.Len(t, catalogRepo.saveCalls, 1)
-		assert.Equal(t, got.IndexedAt(), catalogRepo.saveCalls[0].IndexedAt())
-		assert.Equal(t, got.Skills(), catalogRepo.saveCalls[0].Skills())
+		require.Len(t, catalogRepo.SaveCalls(), 1)
+		assert.Equal(t, got.IndexedAt(), catalogRepo.SaveCalls()[0].CatalogMoqParam.IndexedAt())
+		assert.Equal(t, got.Skills(), catalogRepo.SaveCalls()[0].CatalogMoqParam.Skills())
 		require.Len(t, got.Skills(), 2)
 	})
 
@@ -349,13 +318,20 @@ func TestRebuildCatalog(t *testing.T) {
 		var (
 			rootSource     = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
 			reviewerSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills/reviewer")
-			repository     = &sourceRepository{loadResult: source.NewSources(reviewerSource, rootSource)}
-			catalogRepo    = &catalogRepository{}
-			sut            = newSut(
+			repository     = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(reviewerSource, rootSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			persistedCatalog catalog.Catalog
+			catalogRepo      = &CatalogRepositoryMock{
+				LoadFunc: func() (catalog.Catalog, error) { return persistedCatalog, nil },
+				SaveFunc: func(current catalog.Catalog) error { persistedCatalog = current; return nil },
+			}
+			sut = newSut(
 				t,
 				app.WithSourceRepository(repository),
 				app.WithCatalogRepository(catalogRepo),
-				app.WithClock(clock{now: time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)}),
+				app.WithClock(&ClockMock{NowFunc: func() time.Time { return time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC) }}),
 				app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
 					if mirror.ID() == rootSource.ID() {
 						return nil, errors.New("scan failed")
@@ -370,7 +346,7 @@ func TestRebuildCatalog(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), rootSource.ID())
-		require.Len(t, catalogRepo.saveCalls, 1)
+		require.Len(t, catalogRepo.SaveCalls(), 1)
 		require.Len(t, got.Skills(), 1)
 		assert.Equal(t, reviewerSource.ID(), got.Skills()[0].SourceID())
 	})
@@ -401,8 +377,11 @@ func TestCatalog(t *testing.T) {
 	t.Run("list persisted catalog", func(t *testing.T) {
 		var (
 			reviewerSkill = newSkill(t, "source-a", "reviewer", "Reviewer")
-			repository    = &catalogRepository{loadResult: catalog.NewCatalog(time.Time{}, reviewerSkill)}
-			sut           = newSut(t, app.WithCatalogRepository(repository))
+			repository    = &CatalogRepositoryMock{
+				LoadFunc: func() (catalog.Catalog, error) { return catalog.NewCatalog(time.Time{}, reviewerSkill), nil },
+				SaveFunc: func(catalog.Catalog) error { return nil },
+			}
+			sut = newSut(t, app.WithCatalogRepository(repository))
 		)
 
 		got, err := sut.ListCatalog()
@@ -416,22 +395,29 @@ func TestCatalog(t *testing.T) {
 			ctx              = context.Background()
 			indexedAt        = time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)
 			configuredSource = parseSource(t, "https://github.com/anthropics/skills/tree/main/skills")
-			repository       = &sourceRepository{loadResult: source.NewSources(configuredSource)}
-			refresher        = &sourceRefresher{}
-			catalogRepo      = &catalogRepository{}
-			sut              = newSut(
+			repository       = &SourceRepositoryMock{
+				LoadFunc: func() (source.Sources, error) { return source.NewSources(configuredSource), nil },
+				SaveFunc: func(source.Sources) error { return nil },
+			}
+			refresher        = &SourceRefresherMock{}
+			persistedCatalog catalog.Catalog
+			catalogRepo      = &CatalogRepositoryMock{
+				LoadFunc: func() (catalog.Catalog, error) { return persistedCatalog, nil },
+				SaveFunc: func(current catalog.Catalog) error { persistedCatalog = current; return nil },
+			}
+			sut = newSut(
 				t,
 				app.WithSourceRepository(repository),
 				app.WithSourceRefresher(refresher),
 				app.WithCatalogRepository(catalogRepo),
-				app.WithClock(clock{now: indexedAt}),
+				app.WithClock(&ClockMock{NowFunc: func() time.Time { return indexedAt }}),
 				app.WithCatalogScanner(func(mirror source.Mirror) (catalog.Skills, error) {
 					return catalog.NewSkills(newSkill(t, mirror.ID(), "reviewer", "Reviewer")), nil
 				}),
 			)
 		)
 
-		refresher.refreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
+		refresher.RefreshFunc = func(ctx context.Context, mirror source.Mirror) (source.RefreshResult, error) {
 			return source.RefreshResult{Mirror: mirror, Action: "cloned"}, nil
 		}
 
@@ -442,8 +428,8 @@ func TestCatalog(t *testing.T) {
 		assert.Equal(t, configuredSource, got.Sources[0].Mirror.Source)
 		assert.Equal(t, "cloned", got.Sources[0].Action)
 		assert.Equal(t, indexedAt, got.Catalog.IndexedAt())
-		require.Len(t, catalogRepo.saveCalls, 1)
-		assert.Equal(t, got.Catalog.Skills(), catalogRepo.saveCalls[0].Skills())
+		require.Len(t, catalogRepo.SaveCalls(), 1)
+		assert.Equal(t, got.Catalog.Skills(), catalogRepo.SaveCalls()[0].CatalogMoqParam.Skills())
 	})
 }
 

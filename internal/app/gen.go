@@ -1,0 +1,28 @@
+package app
+
+import (
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
+	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
+)
+
+// These test contracts exist so moq can generate one mock file for the app package,
+// even though App depends on interfaces declared in other packages.
+
+type SourceRepository interface {
+	source.Repository
+}
+
+type SourceRefresher interface {
+	source.Refresher
+}
+
+type CatalogRepository interface {
+	catalog.Repository
+}
+
+type SyncManifestRepository interface {
+	skillsync.ManifestRepository
+}
+
+//go:generate moq -out mocks_test.go -pkg app_test . Clock SourceRepository SourceRefresher CatalogRepository SyncManifestRepository
