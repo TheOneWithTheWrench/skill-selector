@@ -26,7 +26,7 @@
 - Do not let core packages depend on Bubble Tea, CLI formatting, or view models.
 - Keep filesystem, `gh`, `git`, and symlink side effects behind narrow interfaces.
 - Prefer explicit data types and functions over generic plumbing.
-- Prefer the Go standard library for the CLI until the command surface clearly justifies a framework like Cobra.
+- Use Cobra for the CLI now that the command surface justifies it, but keep commands as thin `RunE` wrappers around the shared app layer.
 - Prefer domain names over vague infrastructure names like `state` and `store` when a sharper name exists.
 - Keep file versions and JSON schemas in repository code, not in the core entities.
 - Let entities own validation and pure derivations; let services and repositories own side effects.
@@ -39,7 +39,7 @@
 - Path-based skill identity is simple and good enough for now.
 - Symlink sync with owned manifests is the right foundation.
 - Deduplicating adapters that share a root path is a good idea.
-- The default roots for Claude, Opencode, Ampcode, and Codex already match real usage and are worth carrying forward.
+- The default roots for Claude, Opencode, Ampcode, Codex, and Cursor already match real usage and are worth carrying forward.
 
 ## Learnings from v1
 - The current `internal` package does too much orchestration and owns too many concepts.
