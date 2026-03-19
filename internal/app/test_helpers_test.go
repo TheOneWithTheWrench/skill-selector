@@ -9,6 +9,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -19,6 +20,7 @@ type dependencies struct {
 	SourceRepository  *SourceRepositoryMock
 	SourceRefresher   *SourceRefresherMock
 	CatalogRepository *CatalogRepositoryMock
+	ProfileRepository *ProfileRepositoryMock
 	SyncManifestRepo  *SyncManifestRepositoryMock
 	Clock             *ClockMock
 	CatalogScanner    app.CatalogScanner
@@ -39,6 +41,10 @@ func newDefaultDependencies() *dependencies {
 		CatalogRepository: &CatalogRepositoryMock{
 			LoadFunc: func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
 			SaveFunc: func(catalog.Catalog) error { return nil },
+		},
+		ProfileRepository: &ProfileRepositoryMock{
+			LoadFunc: func() (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+			SaveFunc: func(profile.Profiles) error { return nil },
 		},
 		SyncManifestRepo: &SyncManifestRepositoryMock{
 			LoadAllFunc: func() ([]skillsync.Manifest, error) { return nil, nil },
@@ -68,6 +74,7 @@ func newSutWithRuntime(t *testing.T, deps *dependencies, runtime paths.Runtime) 
 		app.WithSourceRepository(deps.SourceRepository),
 		app.WithSourceRefresher(deps.SourceRefresher),
 		app.WithCatalogRepository(deps.CatalogRepository),
+		app.WithProfileRepository(deps.ProfileRepository),
 		app.WithCatalogScanner(deps.CatalogScanner),
 		app.WithSyncManifestRepository(deps.SyncManifestRepo),
 		app.WithSyncTargetsLoader(deps.SyncTargetsLoader),

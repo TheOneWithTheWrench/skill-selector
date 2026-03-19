@@ -10,6 +10,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/agent"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/paths"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -21,6 +22,7 @@ type App struct {
 	sourceRepository  source.Repository
 	sourceRefresher   source.Refresher
 	catalogRepository catalog.Repository
+	profileRepository profile.Repository
 	catalogScanner    CatalogScanner
 	syncManifestRepo  skillsync.ManifestRepository
 	syncTargetsLoader SyncTargetsLoader
@@ -51,6 +53,7 @@ type options struct {
 	sourceRepository  source.Repository
 	sourceRefresher   source.Refresher
 	catalogRepository catalog.Repository
+	profileRepository profile.Repository
 	catalogScanner    CatalogScanner
 	syncManifestRepo  skillsync.ManifestRepository
 	syncTargetsLoader SyncTargetsLoader
@@ -75,6 +78,13 @@ func WithSourceRefresher(sourceRefresher source.Refresher) Option {
 func WithCatalogRepository(catalogRepository catalog.Repository) Option {
 	return func(opts *options) {
 		opts.catalogRepository = catalogRepository
+	}
+}
+
+// WithProfileRepository injects profile persistence for tests or alternate storage backends.
+func WithProfileRepository(profileRepository profile.Repository) Option {
+	return func(opts *options) {
+		opts.profileRepository = profileRepository
 	}
 }
 
@@ -122,6 +132,7 @@ func New(runtime paths.Runtime, optionFuncs ...Option) (*App, error) {
 		sourceRepository:  opts.sourceRepository,
 		sourceRefresher:   opts.sourceRefresher,
 		catalogRepository: opts.catalogRepository,
+		profileRepository: opts.profileRepository,
 		catalogScanner:    opts.catalogScanner,
 		syncManifestRepo:  opts.syncManifestRepo,
 		syncTargetsLoader: opts.syncTargetsLoader,
@@ -145,6 +156,11 @@ func newDefaultOptions(runtime paths.Runtime) (options, error) {
 		return options{}, err
 	}
 
+	profileRepository, err := profile.NewFileRepository(runtime.ProfilesFile)
+	if err != nil {
+		return options{}, err
+	}
+
 	syncManifestRepo, err := skillsync.NewDirectoryManifestRepository(runtime.SyncStateDir)
 	if err != nil {
 		return options{}, err
@@ -154,6 +170,7 @@ func newDefaultOptions(runtime paths.Runtime) (options, error) {
 		sourceRepository:  sourceRepository,
 		sourceRefresher:   sourceRefresher,
 		catalogRepository: catalogRepository,
+		profileRepository: profileRepository,
 		catalogScanner:    catalog.Scan,
 		syncManifestRepo:  syncManifestRepo,
 		syncTargetsLoader: agent.DefaultTargets,
@@ -300,6 +317,130 @@ func (a *App) ListCatalog() (catalog.Catalog, error) {
 	}
 
 	return a.catalogRepository.Load()
+}
+
+// ListProfiles returns the currently persisted profile state.
+func (a *App) ListProfiles() (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return a.profileRepository.Load()
+}
+
+// CreateProfile adds a new empty profile and persists the next profile state.
+func (a *App) CreateProfile(name string) (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	nextProfiles, err := profiles.Create(name)
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return nextProfiles, nil
+}
+
+// RenameProfile renames one stored profile and persists the next profile state.
+func (a *App) RenameProfile(currentName string, newName string) (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	nextProfiles, err := profiles.Rename(currentName, newName)
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return nextProfiles, nil
+}
+
+// RemoveProfile removes one inactive profile and persists the next profile state.
+func (a *App) RemoveProfile(name string) (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	nextProfiles, err := profiles.Remove(name)
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return nextProfiles, nil
+}
+
+// SwitchProfile changes the active profile without syncing it automatically.
+func (a *App) SwitchProfile(name string) (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	nextProfiles, err := profiles.Switch(name)
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return nextProfiles, nil
+}
+
+// SaveActiveProfileSelection persists the saved selection owned by the active profile.
+func (a *App) SaveActiveProfileSelection(desired skillidentity.Identities) (profile.Profiles, error) {
+	if err := a.paths.EnsureRuntimeDirs(); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	profiles, err := a.profileRepository.Load()
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	nextProfiles, err := profiles.SetActiveSelection(desired)
+	if err != nil {
+		return profile.Profiles{}, err
+	}
+
+	if err := a.profileRepository.Save(nextProfiles); err != nil {
+		return profile.Profiles{}, err
+	}
+
+	return nextProfiles, nil
 }
 
 // ListSyncManifests returns the currently persisted sync ownership state.

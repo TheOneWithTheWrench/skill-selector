@@ -10,6 +10,7 @@ import (
 
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 )
@@ -344,6 +345,109 @@ func (mock *CatalogRepositoryMock) SaveCalls() []struct {
 } {
 	var calls []struct {
 		CatalogMoqParam catalog.Catalog
+	}
+	mock.lockSave.RLock()
+	calls = mock.calls.Save
+	mock.lockSave.RUnlock()
+	return calls
+}
+
+// Ensure, that ProfileRepositoryMock does implement app.ProfileRepository.
+// If this is not the case, regenerate this file with moq.
+var _ app.ProfileRepository = &ProfileRepositoryMock{}
+
+// ProfileRepositoryMock is a mock implementation of app.ProfileRepository.
+//
+//	func TestSomethingThatUsesProfileRepository(t *testing.T) {
+//
+//		// make and configure a mocked app.ProfileRepository
+//		mockedProfileRepository := &ProfileRepositoryMock{
+//			LoadFunc: func() (profile.Profiles, error) {
+//				panic("mock out the Load method")
+//			},
+//			SaveFunc: func(profiles profile.Profiles) error {
+//				panic("mock out the Save method")
+//			},
+//		}
+//
+//		// use mockedProfileRepository in code that requires app.ProfileRepository
+//		// and then make assertions.
+//
+//	}
+type ProfileRepositoryMock struct {
+	// LoadFunc mocks the Load method.
+	LoadFunc func() (profile.Profiles, error)
+
+	// SaveFunc mocks the Save method.
+	SaveFunc func(profiles profile.Profiles) error
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Load holds details about calls to the Load method.
+		Load []struct {
+		}
+		// Save holds details about calls to the Save method.
+		Save []struct {
+			// Profiles is the profiles argument value.
+			Profiles profile.Profiles
+		}
+	}
+	lockLoad sync.RWMutex
+	lockSave sync.RWMutex
+}
+
+// Load calls LoadFunc.
+func (mock *ProfileRepositoryMock) Load() (profile.Profiles, error) {
+	if mock.LoadFunc == nil {
+		panic("ProfileRepositoryMock.LoadFunc: method is nil but ProfileRepository.Load was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockLoad.Lock()
+	mock.calls.Load = append(mock.calls.Load, callInfo)
+	mock.lockLoad.Unlock()
+	return mock.LoadFunc()
+}
+
+// LoadCalls gets all the calls that were made to Load.
+// Check the length with:
+//
+//	len(mockedProfileRepository.LoadCalls())
+func (mock *ProfileRepositoryMock) LoadCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockLoad.RLock()
+	calls = mock.calls.Load
+	mock.lockLoad.RUnlock()
+	return calls
+}
+
+// Save calls SaveFunc.
+func (mock *ProfileRepositoryMock) Save(profiles profile.Profiles) error {
+	if mock.SaveFunc == nil {
+		panic("ProfileRepositoryMock.SaveFunc: method is nil but ProfileRepository.Save was just called")
+	}
+	callInfo := struct {
+		Profiles profile.Profiles
+	}{
+		Profiles: profiles,
+	}
+	mock.lockSave.Lock()
+	mock.calls.Save = append(mock.calls.Save, callInfo)
+	mock.lockSave.Unlock()
+	return mock.SaveFunc(profiles)
+}
+
+// SaveCalls gets all the calls that were made to Save.
+// Check the length with:
+//
+//	len(mockedProfileRepository.SaveCalls())
+func (mock *ProfileRepositoryMock) SaveCalls() []struct {
+	Profiles profile.Profiles
+} {
+	var calls []struct {
+		Profiles profile.Profiles
 	}
 	mock.lockSave.RLock()
 	calls = mock.calls.Save

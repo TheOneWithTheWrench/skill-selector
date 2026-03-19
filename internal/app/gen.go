@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
 )
@@ -21,8 +22,12 @@ type CatalogRepository interface {
 	catalog.Repository
 }
 
+type ProfileRepository interface {
+	profile.Repository
+}
+
 type SyncManifestRepository interface {
 	skillsync.ManifestRepository
 }
 
-//go:generate moq -out mocks_test.go -pkg app_test . Clock SourceRepository SourceRefresher CatalogRepository SyncManifestRepository
+//go:generate moq -out mocks_test.go -pkg app_test . Clock SourceRepository SourceRefresher CatalogRepository ProfileRepository SyncManifestRepository

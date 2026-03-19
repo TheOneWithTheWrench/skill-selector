@@ -10,6 +10,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -32,6 +33,11 @@ func TestRun(t *testing.T) {
 					RemoveSourceFunc:        func(string) (source.Sources, source.Source, error) { return nil, source.Source{}, nil },
 					RefreshCatalogFunc:      func(context.Context) (app.RefreshCatalogResult, error) { return app.RefreshCatalogResult{}, nil },
 					ListCatalogFunc:         func() (catalog.Catalog, error) { return catalog.Catalog{}, nil },
+					ListProfilesFunc:        func() (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					CreateProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RenameProfileFunc:       func(string, string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					RemoveProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
+					SwitchProfileFunc:       func(string) (profile.Profiles, error) { return profile.DefaultProfiles(), nil },
 					SyncSkillIdentitiesFunc: func(skillidentity.Identities) (skillsync.Result, error) { return skillsync.Result{}, nil },
 					ListSyncManifestsFunc:   func() ([]skillsync.Manifest, error) { return nil, nil },
 				},
@@ -83,6 +89,7 @@ func TestRun(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, stdout, "skill-switcher")
 		assert.Contains(t, stdout, "source list")
+		assert.Contains(t, stdout, "profile")
 		assert.Contains(t, stdout, "tui")
 		assert.Contains(t, stdout, "sync --all")
 		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
@@ -90,6 +97,11 @@ func TestRun(t *testing.T) {
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
 		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
 		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
@@ -116,6 +128,11 @@ func TestRun(t *testing.T) {
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
 		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
 		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
@@ -140,6 +157,11 @@ func TestRun(t *testing.T) {
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
 		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
 		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
@@ -216,6 +238,117 @@ func TestRun(t *testing.T) {
 		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
 		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
 		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
+	})
+
+	t.Run("list profiles", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.ListProfilesFunc = func() (profile.Profiles, error) {
+			return profile.NewProfiles(
+				"reviewer",
+				mustProfile(t, profile.DefaultName),
+				mustProfile(t, "reviewer", newIdentity(t, "source-a", "reviewer")),
+			), nil
+		}
+
+		stdout, _, err := run(t, deps, "profile", "list")
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Default")
+		assert.Contains(t, stdout, "reviewer")
+		assert.Contains(t, stdout, "1 skill")
+		require.Len(t, deps.Application.ListProfilesCalls(), 1)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+	})
+
+	t.Run("create profile", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.CreateProfileFunc = func(string) (profile.Profiles, error) {
+			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer")), nil
+		}
+
+		stdout, _, err := run(t, deps, "profile", "create", "reviewer")
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Created profile reviewer")
+		require.Len(t, deps.Application.CreateProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.CreateProfileCalls()[0].S)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+	})
+
+	t.Run("rename profile", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.RenameProfileFunc = func(string, string) (profile.Profiles, error) {
+			return profile.NewProfiles(profile.DefaultName, mustProfile(t, profile.DefaultName), mustProfile(t, "editor")), nil
+		}
+
+		stdout, _, err := run(t, deps, "profile", "rename", "reviewer", "editor")
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Renamed profile to editor")
+		require.Len(t, deps.Application.RenameProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.RenameProfileCalls()[0].S1)
+		assert.Equal(t, "editor", deps.Application.RenameProfileCalls()[0].S2)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+	})
+
+	t.Run("remove profile", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.RemoveProfileFunc = func(string) (profile.Profiles, error) {
+			return profile.DefaultProfiles(), nil
+		}
+
+		stdout, _, err := run(t, deps, "profile", "remove", "reviewer")
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Removed profile reviewer")
+		require.Len(t, deps.Application.RemoveProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.RemoveProfileCalls()[0].S)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.SwitchProfileCalls(), 0)
+	})
+
+	t.Run("switch profile", func(t *testing.T) {
+		var (
+			deps = newDefaultDependencies()
+		)
+
+		deps.Application.SwitchProfileFunc = func(string) (profile.Profiles, error) {
+			return profile.NewProfiles("reviewer", mustProfile(t, profile.DefaultName), mustProfile(t, "reviewer")), nil
+		}
+
+		stdout, _, err := run(t, deps, "profile", "switch", "reviewer")
+
+		require.NoError(t, err)
+		assert.Contains(t, stdout, "Switched active profile to reviewer")
+		require.Len(t, deps.Application.SwitchProfileCalls(), 1)
+		assert.Equal(t, "reviewer", deps.Application.SwitchProfileCalls()[0].S)
+		assert.Len(t, deps.Application.ListProfilesCalls(), 0)
+		assert.Len(t, deps.Application.CreateProfileCalls(), 0)
+		assert.Len(t, deps.Application.RenameProfileCalls(), 0)
+		assert.Len(t, deps.Application.RemoveProfileCalls(), 0)
 	})
 
 	t.Run("refresh catalog and print source actions", func(t *testing.T) {
@@ -375,4 +508,13 @@ func TestRun(t *testing.T) {
 		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
 		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
 	})
+}
+
+func mustProfile(t *testing.T, name string, identities ...skillidentity.Identity) profile.Profile {
+	t.Helper()
+
+	item, err := profile.New(name, identities...)
+	require.NoError(t, err)
+
+	return item
 }

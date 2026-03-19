@@ -10,6 +10,7 @@ import (
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/app"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/catalog"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/cli"
+	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/profile"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/skillidentity"
 	"github.com/TheOneWithTheWrench/skill-switcher-v2/internal/source"
 	skillsync "github.com/TheOneWithTheWrench/skill-switcher-v2/internal/sync"
@@ -28,8 +29,14 @@ var _ cli.Application = &ApplicationMock{}
 //			AddSourceFunc: func(s string) (source.Sources, source.Source, error) {
 //				panic("mock out the AddSource method")
 //			},
+//			CreateProfileFunc: func(s string) (profile.Profiles, error) {
+//				panic("mock out the CreateProfile method")
+//			},
 //			ListCatalogFunc: func() (catalog.Catalog, error) {
 //				panic("mock out the ListCatalog method")
+//			},
+//			ListProfilesFunc: func() (profile.Profiles, error) {
+//				panic("mock out the ListProfiles method")
 //			},
 //			ListSourcesFunc: func() (source.Sources, error) {
 //				panic("mock out the ListSources method")
@@ -40,8 +47,17 @@ var _ cli.Application = &ApplicationMock{}
 //			RefreshCatalogFunc: func(contextMoqParam context.Context) (app.RefreshCatalogResult, error) {
 //				panic("mock out the RefreshCatalog method")
 //			},
+//			RemoveProfileFunc: func(s string) (profile.Profiles, error) {
+//				panic("mock out the RemoveProfile method")
+//			},
 //			RemoveSourceFunc: func(s string) (source.Sources, source.Source, error) {
 //				panic("mock out the RemoveSource method")
+//			},
+//			RenameProfileFunc: func(s1 string, s2 string) (profile.Profiles, error) {
+//				panic("mock out the RenameProfile method")
+//			},
+//			SwitchProfileFunc: func(s string) (profile.Profiles, error) {
+//				panic("mock out the SwitchProfile method")
 //			},
 //			SyncSkillIdentitiesFunc: func(identities skillidentity.Identities) (skillsync.Result, error) {
 //				panic("mock out the SyncSkillIdentities method")
@@ -56,8 +72,14 @@ type ApplicationMock struct {
 	// AddSourceFunc mocks the AddSource method.
 	AddSourceFunc func(s string) (source.Sources, source.Source, error)
 
+	// CreateProfileFunc mocks the CreateProfile method.
+	CreateProfileFunc func(s string) (profile.Profiles, error)
+
 	// ListCatalogFunc mocks the ListCatalog method.
 	ListCatalogFunc func() (catalog.Catalog, error)
+
+	// ListProfilesFunc mocks the ListProfiles method.
+	ListProfilesFunc func() (profile.Profiles, error)
 
 	// ListSourcesFunc mocks the ListSources method.
 	ListSourcesFunc func() (source.Sources, error)
@@ -68,8 +90,17 @@ type ApplicationMock struct {
 	// RefreshCatalogFunc mocks the RefreshCatalog method.
 	RefreshCatalogFunc func(contextMoqParam context.Context) (app.RefreshCatalogResult, error)
 
+	// RemoveProfileFunc mocks the RemoveProfile method.
+	RemoveProfileFunc func(s string) (profile.Profiles, error)
+
 	// RemoveSourceFunc mocks the RemoveSource method.
 	RemoveSourceFunc func(s string) (source.Sources, source.Source, error)
+
+	// RenameProfileFunc mocks the RenameProfile method.
+	RenameProfileFunc func(s1 string, s2 string) (profile.Profiles, error)
+
+	// SwitchProfileFunc mocks the SwitchProfile method.
+	SwitchProfileFunc func(s string) (profile.Profiles, error)
 
 	// SyncSkillIdentitiesFunc mocks the SyncSkillIdentities method.
 	SyncSkillIdentitiesFunc func(identities skillidentity.Identities) (skillsync.Result, error)
@@ -81,8 +112,16 @@ type ApplicationMock struct {
 			// S is the s argument value.
 			S string
 		}
+		// CreateProfile holds details about calls to the CreateProfile method.
+		CreateProfile []struct {
+			// S is the s argument value.
+			S string
+		}
 		// ListCatalog holds details about calls to the ListCatalog method.
 		ListCatalog []struct {
+		}
+		// ListProfiles holds details about calls to the ListProfiles method.
+		ListProfiles []struct {
 		}
 		// ListSources holds details about calls to the ListSources method.
 		ListSources []struct {
@@ -95,8 +134,25 @@ type ApplicationMock struct {
 			// ContextMoqParam is the contextMoqParam argument value.
 			ContextMoqParam context.Context
 		}
+		// RemoveProfile holds details about calls to the RemoveProfile method.
+		RemoveProfile []struct {
+			// S is the s argument value.
+			S string
+		}
 		// RemoveSource holds details about calls to the RemoveSource method.
 		RemoveSource []struct {
+			// S is the s argument value.
+			S string
+		}
+		// RenameProfile holds details about calls to the RenameProfile method.
+		RenameProfile []struct {
+			// S1 is the s1 argument value.
+			S1 string
+			// S2 is the s2 argument value.
+			S2 string
+		}
+		// SwitchProfile holds details about calls to the SwitchProfile method.
+		SwitchProfile []struct {
 			// S is the s argument value.
 			S string
 		}
@@ -107,11 +163,16 @@ type ApplicationMock struct {
 		}
 	}
 	lockAddSource           sync.RWMutex
+	lockCreateProfile       sync.RWMutex
 	lockListCatalog         sync.RWMutex
+	lockListProfiles        sync.RWMutex
 	lockListSources         sync.RWMutex
 	lockListSyncManifests   sync.RWMutex
 	lockRefreshCatalog      sync.RWMutex
+	lockRemoveProfile       sync.RWMutex
 	lockRemoveSource        sync.RWMutex
+	lockRenameProfile       sync.RWMutex
+	lockSwitchProfile       sync.RWMutex
 	lockSyncSkillIdentities sync.RWMutex
 }
 
@@ -147,6 +208,38 @@ func (mock *ApplicationMock) AddSourceCalls() []struct {
 	return calls
 }
 
+// CreateProfile calls CreateProfileFunc.
+func (mock *ApplicationMock) CreateProfile(s string) (profile.Profiles, error) {
+	if mock.CreateProfileFunc == nil {
+		panic("ApplicationMock.CreateProfileFunc: method is nil but Application.CreateProfile was just called")
+	}
+	callInfo := struct {
+		S string
+	}{
+		S: s,
+	}
+	mock.lockCreateProfile.Lock()
+	mock.calls.CreateProfile = append(mock.calls.CreateProfile, callInfo)
+	mock.lockCreateProfile.Unlock()
+	return mock.CreateProfileFunc(s)
+}
+
+// CreateProfileCalls gets all the calls that were made to CreateProfile.
+// Check the length with:
+//
+//	len(mockedApplication.CreateProfileCalls())
+func (mock *ApplicationMock) CreateProfileCalls() []struct {
+	S string
+} {
+	var calls []struct {
+		S string
+	}
+	mock.lockCreateProfile.RLock()
+	calls = mock.calls.CreateProfile
+	mock.lockCreateProfile.RUnlock()
+	return calls
+}
+
 // ListCatalog calls ListCatalogFunc.
 func (mock *ApplicationMock) ListCatalog() (catalog.Catalog, error) {
 	if mock.ListCatalogFunc == nil {
@@ -171,6 +264,33 @@ func (mock *ApplicationMock) ListCatalogCalls() []struct {
 	mock.lockListCatalog.RLock()
 	calls = mock.calls.ListCatalog
 	mock.lockListCatalog.RUnlock()
+	return calls
+}
+
+// ListProfiles calls ListProfilesFunc.
+func (mock *ApplicationMock) ListProfiles() (profile.Profiles, error) {
+	if mock.ListProfilesFunc == nil {
+		panic("ApplicationMock.ListProfilesFunc: method is nil but Application.ListProfiles was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockListProfiles.Lock()
+	mock.calls.ListProfiles = append(mock.calls.ListProfiles, callInfo)
+	mock.lockListProfiles.Unlock()
+	return mock.ListProfilesFunc()
+}
+
+// ListProfilesCalls gets all the calls that were made to ListProfiles.
+// Check the length with:
+//
+//	len(mockedApplication.ListProfilesCalls())
+func (mock *ApplicationMock) ListProfilesCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockListProfiles.RLock()
+	calls = mock.calls.ListProfiles
+	mock.lockListProfiles.RUnlock()
 	return calls
 }
 
@@ -260,6 +380,38 @@ func (mock *ApplicationMock) RefreshCatalogCalls() []struct {
 	return calls
 }
 
+// RemoveProfile calls RemoveProfileFunc.
+func (mock *ApplicationMock) RemoveProfile(s string) (profile.Profiles, error) {
+	if mock.RemoveProfileFunc == nil {
+		panic("ApplicationMock.RemoveProfileFunc: method is nil but Application.RemoveProfile was just called")
+	}
+	callInfo := struct {
+		S string
+	}{
+		S: s,
+	}
+	mock.lockRemoveProfile.Lock()
+	mock.calls.RemoveProfile = append(mock.calls.RemoveProfile, callInfo)
+	mock.lockRemoveProfile.Unlock()
+	return mock.RemoveProfileFunc(s)
+}
+
+// RemoveProfileCalls gets all the calls that were made to RemoveProfile.
+// Check the length with:
+//
+//	len(mockedApplication.RemoveProfileCalls())
+func (mock *ApplicationMock) RemoveProfileCalls() []struct {
+	S string
+} {
+	var calls []struct {
+		S string
+	}
+	mock.lockRemoveProfile.RLock()
+	calls = mock.calls.RemoveProfile
+	mock.lockRemoveProfile.RUnlock()
+	return calls
+}
+
 // RemoveSource calls RemoveSourceFunc.
 func (mock *ApplicationMock) RemoveSource(s string) (source.Sources, source.Source, error) {
 	if mock.RemoveSourceFunc == nil {
@@ -289,6 +441,74 @@ func (mock *ApplicationMock) RemoveSourceCalls() []struct {
 	mock.lockRemoveSource.RLock()
 	calls = mock.calls.RemoveSource
 	mock.lockRemoveSource.RUnlock()
+	return calls
+}
+
+// RenameProfile calls RenameProfileFunc.
+func (mock *ApplicationMock) RenameProfile(s1 string, s2 string) (profile.Profiles, error) {
+	if mock.RenameProfileFunc == nil {
+		panic("ApplicationMock.RenameProfileFunc: method is nil but Application.RenameProfile was just called")
+	}
+	callInfo := struct {
+		S1 string
+		S2 string
+	}{
+		S1: s1,
+		S2: s2,
+	}
+	mock.lockRenameProfile.Lock()
+	mock.calls.RenameProfile = append(mock.calls.RenameProfile, callInfo)
+	mock.lockRenameProfile.Unlock()
+	return mock.RenameProfileFunc(s1, s2)
+}
+
+// RenameProfileCalls gets all the calls that were made to RenameProfile.
+// Check the length with:
+//
+//	len(mockedApplication.RenameProfileCalls())
+func (mock *ApplicationMock) RenameProfileCalls() []struct {
+	S1 string
+	S2 string
+} {
+	var calls []struct {
+		S1 string
+		S2 string
+	}
+	mock.lockRenameProfile.RLock()
+	calls = mock.calls.RenameProfile
+	mock.lockRenameProfile.RUnlock()
+	return calls
+}
+
+// SwitchProfile calls SwitchProfileFunc.
+func (mock *ApplicationMock) SwitchProfile(s string) (profile.Profiles, error) {
+	if mock.SwitchProfileFunc == nil {
+		panic("ApplicationMock.SwitchProfileFunc: method is nil but Application.SwitchProfile was just called")
+	}
+	callInfo := struct {
+		S string
+	}{
+		S: s,
+	}
+	mock.lockSwitchProfile.Lock()
+	mock.calls.SwitchProfile = append(mock.calls.SwitchProfile, callInfo)
+	mock.lockSwitchProfile.Unlock()
+	return mock.SwitchProfileFunc(s)
+}
+
+// SwitchProfileCalls gets all the calls that were made to SwitchProfile.
+// Check the length with:
+//
+//	len(mockedApplication.SwitchProfileCalls())
+func (mock *ApplicationMock) SwitchProfileCalls() []struct {
+	S string
+} {
+	var calls []struct {
+		S string
+	}
+	mock.lockSwitchProfile.RLock()
+	calls = mock.calls.SwitchProfile
+	mock.lockSwitchProfile.RUnlock()
 	return calls
 }
 
