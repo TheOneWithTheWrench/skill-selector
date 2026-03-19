@@ -81,9 +81,36 @@ func TestRun(t *testing.T) {
 		)
 
 		require.NoError(t, err)
+		assert.Contains(t, stdout, "skill-switcher")
 		assert.Contains(t, stdout, "source list")
 		assert.Contains(t, stdout, "tui")
 		assert.Contains(t, stdout, "sync --all")
+		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
+		assert.Len(t, deps.Application.AddSourceCalls(), 0)
+		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
+		assert.Len(t, deps.Application.RefreshCatalogCalls(), 0)
+		assert.Len(t, deps.Application.ListCatalogCalls(), 0)
+		assert.Len(t, deps.Application.SyncSkillIdentitiesCalls(), 0)
+		assert.Len(t, deps.Application.ListSyncManifestsCalls(), 0)
+	})
+
+	t.Run("open tui when no command is given", func(t *testing.T) {
+		var (
+			openTUICalls int
+			deps         = newDefaultDependencies()
+		)
+
+		deps.OpenTUI = func() error {
+			openTUICalls++
+			return nil
+		}
+
+		stdout, stderr, err := run(t, deps)
+
+		require.NoError(t, err)
+		assert.Empty(t, stdout)
+		assert.Empty(t, stderr)
+		assert.Equal(t, 1, openTUICalls)
 		assert.Len(t, deps.Application.ListSourcesCalls(), 0)
 		assert.Len(t, deps.Application.AddSourceCalls(), 0)
 		assert.Len(t, deps.Application.RemoveSourceCalls(), 0)
