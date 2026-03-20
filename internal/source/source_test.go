@@ -19,6 +19,16 @@ func TestParse(t *testing.T) {
 		assert.Equal(t, "skills", got.Subpath())
 	})
 
+	t.Run("parse github repo root url", func(t *testing.T) {
+		got, err := source.Parse("https://github.com/ComposioHQ/awesome-claude-skills")
+
+		require.NoError(t, err)
+		assert.Equal(t, "https://github.com/ComposioHQ/awesome-claude-skills", got.Locator())
+		assert.Equal(t, "https://github.com/ComposioHQ/awesome-claude-skills.git", got.CloneURL())
+		assert.Empty(t, got.Ref())
+		assert.Empty(t, got.Subpath())
+	})
+
 	t.Run("trim whitespace before parsing", func(t *testing.T) {
 		got, err := source.Parse("  https://github.com/anthropics/skills/tree/main/skills  ")
 
@@ -54,11 +64,11 @@ func TestParse(t *testing.T) {
 		assert.Contains(t, err.Error(), "must point at github.com")
 	})
 
-	t.Run("return error when url does not contain tree segment", func(t *testing.T) {
+	t.Run("return error when url is neither a repo nor tree url", func(t *testing.T) {
 		_, err := source.Parse("https://github.com/anthropics/skills/blob/main/skills")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "must contain /tree/")
+		assert.Contains(t, err.Error(), "must be a GitHub repo or tree url")
 	})
 }
 
@@ -68,5 +78,12 @@ func TestSourceID(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "anthropics-skills-skills-75224e3c", configuredSource.ID())
+	})
+
+	t.Run("return stable source id for repo root without explicit ref", func(t *testing.T) {
+		configuredSource, err := source.Parse("https://github.com/ComposioHQ/awesome-claude-skills")
+
+		require.NoError(t, err)
+		assert.Equal(t, "composiohq-awesome-claude-skills-d4a5ef49", configuredSource.ID())
 	})
 }

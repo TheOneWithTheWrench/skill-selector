@@ -84,15 +84,15 @@ func TestDefaultDefinitions(t *testing.T) {
 		assert.Equal(t, filepath.Join(rootPath, "reviewer"), target.LinkPath(identity))
 	})
 
-	t.Run("link path returns root for empty relative path", func(t *testing.T) {
+	t.Run("link path falls back to source id for empty relative path", func(t *testing.T) {
 		definition := lookupDefinition(t, agent.DefaultDefinitions(), "codex")
 		rootPath := "/tmp/agents/skills"
-		identity := newIdentity(t, "source", "")
+		identity := newIdentity(t, "source-root-skill", "")
 
 		target, err := definition.Target(rootPath)
 
 		require.NoError(t, err)
-		assert.Equal(t, rootPath, target.LinkPath(identity))
+		assert.Equal(t, filepath.Join(rootPath, "source-root-skill"), target.LinkPath(identity))
 	})
 
 	t.Run("reject non absolute root overrides", func(t *testing.T) {

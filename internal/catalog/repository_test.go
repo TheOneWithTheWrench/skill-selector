@@ -33,7 +33,7 @@ func TestFileRepository(t *testing.T) {
 			identity, err := skill_identity.New(sourceID, relativePath)
 			require.NoError(t, err)
 
-			discoveredSkill, err := catalog.NewSkill(identity, name, name+" description")
+			discoveredSkill, err := catalog.NewSkill(identity, name, name+" description", "tag-a", "tag-b")
 			require.NoError(t, err)
 			return discoveredSkill
 		}
@@ -82,6 +82,7 @@ func TestFileRepository(t *testing.T) {
       "source_id": "source-a",
       "name": "Reviewer",
       "description": "Reviewer description",
+      "tags": ["tag-a", "tag-b"],
       "relative_path": "reviewer",
       "skill_file": "reviewer/SKILL.md"
     },
@@ -89,6 +90,7 @@ func TestFileRepository(t *testing.T) {
       "source_id": "source-a",
       "name": "Reviewer",
       "description": "Reviewer description",
+      "tags": ["tag-a", "tag-b"],
       "relative_path": "reviewer",
       "skill_file": "reviewer/SKILL.md"
     }

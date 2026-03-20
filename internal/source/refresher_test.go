@@ -56,6 +56,17 @@ func TestGitRefresherRefresh(t *testing.T) {
 
 			return mirror
 		}
+		newRootMirror = func(t *testing.T) source.Mirror {
+			t.Helper()
+
+			configuredSource, err := source.Parse("https://github.com/ComposioHQ/awesome-claude-skills")
+			require.NoError(t, err)
+
+			mirror, err := source.NewMirror(configuredSource, filepath.Join(t.TempDir(), "sources"))
+			require.NoError(t, err)
+
+			return mirror
+		}
 	)
 
 	t.Run("clone missing mirror", func(t *testing.T) {
@@ -78,7 +89,7 @@ func TestGitRefresherRefresh(t *testing.T) {
 		require.Len(t, deps.Runner.RunCalls(), 1)
 		assert.Equal(t, "", deps.Runner.RunCalls()[0].Workdir)
 		assert.Equal(t, "git", deps.Runner.RunCalls()[0].Name)
-		assert.Equal(t, []string{"clone", "--branch", "main", "--single-branch", "https://github.com/anthropics/skills.git", mirror.ClonePath}, deps.Runner.RunCalls()[0].Args)
+		assert.Equal(t, []string{"clone", "--depth", "1", "--branch", "main", "--single-branch", "https://github.com/anthropics/skills.git", mirror.ClonePath}, deps.Runner.RunCalls()[0].Args)
 		assert.DirExists(t, filepath.Dir(mirror.ClonePath))
 	})
 
@@ -101,6 +112,26 @@ func TestGitRefresherRefresh(t *testing.T) {
 		assert.Equal(t, mirror.ClonePath, deps.Runner.RunCalls()[0].Workdir)
 		assert.Equal(t, "git", deps.Runner.RunCalls()[0].Name)
 		assert.Equal(t, []string{"pull", "--ff-only"}, deps.Runner.RunCalls()[0].Args)
+	})
+
+	t.Run("clone repo root source without explicit branch", func(t *testing.T) {
+		var (
+			ctx    = newCtx()
+			deps   = newDefaultDependencies()
+			mirror = newRootMirror(t)
+			sut    = newSut(t, deps)
+		)
+
+		deps.Runner.RunFunc = func(ctx context.Context, workdir string, name string, args ...string) error {
+			return os.MkdirAll(mirror.ClonePath, 0o755)
+		}
+
+		got, err := sut.Refresh(ctx, mirror)
+
+		require.NoError(t, err)
+		assert.Equal(t, "cloned", got.Action)
+		require.Len(t, deps.Runner.RunCalls(), 1)
+		assert.Equal(t, []string{"clone", "--depth", "1", "https://github.com/ComposioHQ/awesome-claude-skills.git", mirror.ClonePath}, deps.Runner.RunCalls()[0].Args)
 	})
 
 	t.Run("return wrapped clone error", func(t *testing.T) {

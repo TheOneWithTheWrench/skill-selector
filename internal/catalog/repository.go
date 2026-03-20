@@ -32,11 +32,12 @@ type fileCatalog struct {
 }
 
 type fileSkill struct {
-	SourceID     string `json:"source_id"`
-	Name         string `json:"name"`
-	Description  string `json:"description,omitempty"`
-	RelativePath string `json:"relative_path"`
-	SkillFile    string `json:"skill_file"`
+	SourceID     string   `json:"source_id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description,omitempty"`
+	Tags         []string `json:"tags,omitempty"`
+	RelativePath string   `json:"relative_path"`
+	SkillFile    string   `json:"skill_file"`
 }
 
 // NewFileRepository binds catalog persistence to a single file path.
@@ -70,7 +71,7 @@ func (r FileRepository) Load() (Catalog, error) {
 			return Catalog{}, fmt.Errorf("decode catalog file %q: %w", r.path, err)
 		}
 
-		discoveredSkill, err := NewSkill(identity, storedSkill.Name, storedSkill.Description)
+		discoveredSkill, err := NewSkill(identity, storedSkill.Name, storedSkill.Description, storedSkill.Tags...)
 		if err != nil {
 			return Catalog{}, fmt.Errorf("decode catalog file %q: %w", r.path, err)
 		}
@@ -95,6 +96,7 @@ func (r FileRepository) Save(current Catalog) error {
 			SourceID:     discoveredSkill.SourceID(),
 			Name:         discoveredSkill.Name(),
 			Description:  discoveredSkill.Description(),
+			Tags:         discoveredSkill.Tags(),
 			RelativePath: discoveredSkill.RelativePath(),
 			SkillFile:    discoveredSkill.FilePath(),
 		})

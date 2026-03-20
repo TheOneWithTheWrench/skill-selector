@@ -43,16 +43,18 @@ func (r GitRefresher) Refresh(ctx context.Context, mirror Mirror) (RefreshResult
 			return RefreshResult{}, err
 		}
 
+		args := []string{"clone"}
+		args = append(args, "--depth", "1")
+		if mirror.Source.Ref() != "" {
+			args = append(args, "--branch", mirror.Source.Ref(), "--single-branch")
+		}
+		args = append(args, mirror.Source.CloneURL(), mirror.ClonePath)
+
 		if err := r.runner.Run(
 			ctx,
 			"",
 			"git",
-			"clone",
-			"--branch",
-			mirror.Source.Ref(),
-			"--single-branch",
-			mirror.Source.CloneURL(),
-			mirror.ClonePath,
+			args...,
 		); err != nil {
 			return RefreshResult{}, fmt.Errorf("clone source %q: %w", mirror.Source.Locator(), err)
 		}

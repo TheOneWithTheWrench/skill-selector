@@ -576,10 +576,16 @@ func (m Model) visibleCount() int {
 }
 
 func renderSkillDetail(discoveredSkill catalog.Skill) string {
-	lines := make([]string, 0, 5)
+	lines := make([]string, 0, 6)
 
 	if discoveredSkill.Description() != "" {
-		lines = append(lines, discoveredSkill.Description(), "")
+		lines = append(lines, discoveredSkill.Description())
+	}
+	if len(discoveredSkill.Tags()) > 0 {
+		lines = append(lines, "Tags: "+strings.Join(discoveredSkill.Tags(), ", "))
+	}
+	if len(lines) > 0 {
+		lines = append(lines, "")
 	}
 
 	lines = append(lines, "Source: "+discoveredSkill.SourceID())

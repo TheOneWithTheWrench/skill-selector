@@ -31,6 +31,28 @@ func TestScan(t *testing.T) {
 				ClonePath: clonePath,
 			}
 		}
+		newSubtreeMirror = func(t *testing.T, clonePath string, locator string) source.Mirror {
+			t.Helper()
+
+			configuredSource, err := source.Parse(locator)
+			require.NoError(t, err)
+
+			return source.Mirror{
+				Source:    configuredSource,
+				ClonePath: clonePath,
+			}
+		}
+		newRootMirror = func(t *testing.T, clonePath string) source.Mirror {
+			t.Helper()
+
+			configuredSource, err := source.Parse("https://github.com/ComposioHQ/awesome-claude-skills")
+			require.NoError(t, err)
+
+			return source.Mirror{
+				Source:    configuredSource,
+				ClonePath: clonePath,
+			}
+		}
 	)
 
 	t.Run("discover skills by skill dot md directories", func(t *testing.T) {
@@ -67,6 +89,39 @@ func TestScan(t *testing.T) {
 		require.Len(t, skills, 1)
 		assert.Equal(t, "Acceptance Testing", skills[0].Name())
 		assert.Equal(t, "End-to-end tests with Given/When/Then pattern.", skills[0].Description())
+	})
+
+	t.Run("parse multiline yaml frontmatter descriptions", func(t *testing.T) {
+		var (
+			rootPath   = t.TempDir()
+			sourceRoot = filepath.Join(rootPath, "skills")
+			mirror     = newMirror(t, rootPath)
+		)
+
+		newSkill(t, sourceRoot, "smart-reporting", "---\nname: report\ndescription: >-\n  Generate test report. Use when user says \"test report\", \"results summary\",\n  \"test status\", \"show results\", or \"how did tests go\".\n---\n\n# Smart Test Reporting\n")
+
+		skills, err := catalog.Scan(mirror)
+
+		require.NoError(t, err)
+		require.Len(t, skills, 1)
+		assert.Equal(t, "Smart Test Reporting", skills[0].Name())
+		assert.Equal(t, "Generate test report. Use when user says \"test report\", \"results summary\", \"test status\", \"show results\", or \"how did tests go\".", skills[0].Description())
+	})
+
+	t.Run("parse yaml frontmatter tags lists", func(t *testing.T) {
+		var (
+			rootPath   = t.TempDir()
+			sourceRoot = filepath.Join(rootPath, "skills")
+			mirror     = newMirror(t, rootPath)
+		)
+
+		newSkill(t, sourceRoot, "smart-reporting", "---\nname: report\ndescription: Generate reports\ntags:\n  - reporting\n  - playwright\n  - Reporting\n---\n\n# Smart Test Reporting\n")
+
+		skills, err := catalog.Scan(mirror)
+
+		require.NoError(t, err)
+		require.Len(t, skills, 1)
+		assert.Equal(t, []string{"reporting", "playwright"}, skills[0].Tags())
 	})
 
 	t.Run("prefer first markdown heading when frontmatter already defines description", func(t *testing.T) {
@@ -118,5 +173,61 @@ func TestScan(t *testing.T) {
 		require.Len(t, skills, 1)
 		assert.Equal(t, "Acceptance Testing", skills[0].Name())
 		assert.Equal(t, "Description here.", skills[0].Description())
+	})
+
+	t.Run("discover nested skills and skip the collection root skill", func(t *testing.T) {
+		var (
+			rootPath   = t.TempDir()
+			sourceRoot = filepath.Join(rootPath, "engineering-team")
+			mirror     = newSubtreeMirror(t, rootPath, "https://github.com/alirezarezvani/claude-skills/tree/main/engineering-team")
+		)
+
+		newSkill(t, sourceRoot, "", "# Engineering Team\n\nBundle description.\n")
+		newSkill(t, sourceRoot, "a11y-audit", "# A11y Audit\n\nAccessibility checks.\n")
+		newSkill(t, sourceRoot, "code-reviewer", "# Code Reviewer\n\nReview code changes.\n")
+
+		skills, err := catalog.Scan(mirror)
+
+		require.NoError(t, err)
+		require.Len(t, skills, 2)
+		assert.Equal(t, "A11y Audit", skills[0].Name())
+		assert.Equal(t, "a11y-audit", skills[0].RelativePath())
+		assert.Equal(t, "code-reviewer", skills[1].RelativePath())
+	})
+
+	t.Run("discover a root skill from a plain github repo source", func(t *testing.T) {
+		var (
+			rootPath = t.TempDir()
+			mirror   = newRootMirror(t, rootPath)
+		)
+
+		newSkill(t, rootPath, "", "# Brand Guidelines\n\nApply brand colors.\n")
+
+		skills, err := catalog.Scan(mirror)
+
+		require.NoError(t, err)
+		require.Len(t, skills, 1)
+		assert.Equal(t, "Brand Guidelines", skills[0].Name())
+		assert.Equal(t, "Apply brand colors.", skills[0].Description())
+		assert.Empty(t, skills[0].RelativePath())
+	})
+
+	t.Run("skip common heavy directories even if they contain skill files", func(t *testing.T) {
+		var (
+			rootPath   = t.TempDir()
+			sourceRoot = filepath.Join(rootPath, "skills")
+			mirror     = newMirror(t, rootPath)
+		)
+
+		newSkill(t, sourceRoot, "reviewer", "# Reviewer\n\nReview pull requests carefully.\n")
+		newSkill(t, sourceRoot, "node_modules/fake-package", "# Fake Package\n\nShould be ignored.\n")
+		newSkill(t, sourceRoot, "vendor/third-party", "# Third Party\n\nShould be ignored.\n")
+
+		skills, err := catalog.Scan(mirror)
+
+		require.NoError(t, err)
+		require.Len(t, skills, 1)
+		assert.Equal(t, "Reviewer", skills[0].Name())
+		assert.Equal(t, "reviewer", skills[0].RelativePath())
 	})
 }

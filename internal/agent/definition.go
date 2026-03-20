@@ -91,7 +91,12 @@ func (d Definition) Target(rootOverride string) (skillsync.Target, error) {
 	}
 
 	return skillsync.NewTarget(d.name, rootPath, func(identity skill_identity.Identity) string {
-		return safeJoin(rootPath, identity.RelativePath())
+		relativePath := identity.RelativePath()
+		if relativePath == "" {
+			relativePath = identity.SourceID()
+		}
+
+		return safeJoin(rootPath, relativePath)
 	})
 }
 

@@ -13,10 +13,11 @@ type Skill struct {
 	identity    skill_identity.Identity
 	name        string
 	description string
+	tags        []string
 }
 
 // NewSkill validates discovered skill metadata for a known skill identity.
-func NewSkill(identity skill_identity.Identity, name string, description string) (Skill, error) {
+func NewSkill(identity skill_identity.Identity, name string, description string, tags ...string) (Skill, error) {
 	normalizedName := strings.TrimSpace(name)
 	if normalizedName == "" {
 		return Skill{}, fmt.Errorf("skill name required")
@@ -26,6 +27,7 @@ func NewSkill(identity skill_identity.Identity, name string, description string)
 		identity:    identity,
 		name:        normalizedName,
 		description: strings.TrimSpace(description),
+		tags:        normalizeTags(tags...),
 	}, nil
 }
 
@@ -54,6 +56,11 @@ func (s Skill) Description() string {
 	return s.description
 }
 
+// Tags returns normalized discovery keywords associated with the skill.
+func (s Skill) Tags() []string {
+	return append([]string(nil), s.tags...)
+}
+
 // RelativePath returns the skill directory path relative to the source subtree.
 func (s Skill) RelativePath() string {
 	return s.identity.RelativePath()
@@ -66,4 +73,26 @@ func (s Skill) FilePath() string {
 	}
 
 	return path.Join(s.identity.RelativePath(), "SKILL.md")
+}
+
+func normalizeTags(tags ...string) []string {
+	normalizedTags := make([]string, 0, len(tags))
+	seen := make(map[string]struct{}, len(tags))
+
+	for _, rawTag := range tags {
+		tag := strings.TrimSpace(rawTag)
+		if tag == "" {
+			continue
+		}
+
+		key := strings.ToLower(tag)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		normalizedTags = append(normalizedTags, tag)
+	}
+
+	return normalizedTags
 }

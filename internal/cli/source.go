@@ -59,7 +59,7 @@ func newSourceAddCommand(application Application) *cobra.Command {
 	return &cobra.Command{
 		Use:   "add <locator>",
 		Short: "Add a skill source",
-		Long:  "Add a supported source locator, such as a GitHub tree URL, to the configured source list.",
+		Long:  "Add a supported GitHub repo or tree URL to the configured source list. For large or oddly structured repos, prefer a GitHub tree URL that points at the exact folder you want scanned.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, configuredSource, err := application.AddSource(args[0])

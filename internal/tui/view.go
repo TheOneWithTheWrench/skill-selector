@@ -351,7 +351,7 @@ func (m Model) renderDetail(width int, height int) string {
 		sections = append(sections, detailMetaStyle.Render(selected.Subtitle))
 	}
 
-	chips := m.renderDetailChips()
+	chips := m.renderSkillTagChips()
 	if chips != "" {
 		sections = append(sections, chips)
 	}
@@ -406,20 +406,23 @@ func (m Model) renderDetailBody(selected item, width int, height int) string {
 	return clipLines(strings.Join(blocks, "\n\n"), visibleLines)
 }
 
-func (m Model) renderDetailChips() string {
-	labels := []string{strings.ToLower(m.focusLabel())}
+func (m Model) renderSkillTagChips() string {
+	if m.section != sectionCatalog {
+		return ""
+	}
 
-	switch m.section {
-	case sectionCatalog:
-		if discoveredSkill, ok := m.currentCatalogSkill(); ok {
-			labels = append(labels, "skill", displayRelativePath(discoveredSkill.RelativePath()))
+	discoveredSkill, ok := m.currentCatalogSkill()
+	if !ok || len(discoveredSkill.Tags()) == 0 {
+		return ""
+	}
+
+	labels := make([]string, 0, min(len(discoveredSkill.Tags()), 4))
+	for index, tag := range discoveredSkill.Tags() {
+		if index == 3 {
+			labels = append(labels, fmt.Sprintf("+%d more", len(discoveredSkill.Tags())-index))
+			break
 		}
-	case sectionSources:
-		labels = append(labels, "github", "tree-url")
-	case sectionProfiles:
-		labels = append(labels, "profiles", m.snapshot.Profiles.ActiveName())
-	default:
-		labels = append(labels, "sync")
+		labels = append(labels, tag)
 	}
 
 	chips := make([]string, 0, len(labels))

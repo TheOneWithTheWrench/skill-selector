@@ -16,7 +16,7 @@ type Source struct {
 
 // Parse accepts supported source locators and returns a configured Source.
 func Parse(rawURL string) (Source, error) {
-	return parseGitHubTreeSource(rawURL)
+	return parseGitHubSource(rawURL)
 }
 
 // ID returns the stable source identifier used across persistence and sync.
@@ -35,6 +35,7 @@ func (s Source) CloneURL() string {
 }
 
 // Ref returns the git ref that should be mirrored locally.
+// An empty value means the source should follow the repository default branch.
 func (s Source) Ref() string {
 	return s.ref
 }
@@ -54,10 +55,6 @@ func newSource(id string, locator string, cloneURL string, ref string, subpath s
 	if strings.TrimSpace(cloneURL) == "" {
 		return Source{}, fmt.Errorf("source clone url required")
 	}
-	if strings.TrimSpace(ref) == "" {
-		return Source{}, fmt.Errorf("source ref required")
-	}
-
 	return Source{
 		id:       strings.TrimSpace(id),
 		locator:  strings.TrimSpace(locator),

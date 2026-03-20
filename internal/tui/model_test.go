@@ -481,4 +481,19 @@ func TestModel(t *testing.T) {
 		assert.Contains(t, items[1].Detail, "Adapters: ampcode, codex")
 		assert.Contains(t, items[1].Detail, "Synced skills: 1")
 	})
+
+	t.Run("skill detail shows description and tags in the overview", func(t *testing.T) {
+		var (
+			identity = newIdentity(t, "source-a", "smart-reporting")
+		)
+
+		discoveredSkill, err := catalog.NewSkill(identity, "Smart Test Reporting", "Generate reports for test runs.", "reporting", "playwright")
+		require.NoError(t, err)
+
+		detail := renderSkillDetail(discoveredSkill)
+
+		assert.Contains(t, detail, "Generate reports for test runs.")
+		assert.Contains(t, detail, "Tags: reporting, playwright")
+		assert.Contains(t, detail, "Path: smart-reporting")
+	})
 }

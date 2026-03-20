@@ -19,7 +19,7 @@ func TestNewSkill(t *testing.T) {
 	}
 
 	t.Run("normalize discovered skill metadata", func(t *testing.T) {
-		got, err := catalog.NewSkill(newIdentity(t, "anthropics-skills-skills-75224e3c", "reviewer/./"), " Reviewer ", " Review pull requests carefully. ")
+		got, err := catalog.NewSkill(newIdentity(t, "anthropics-skills-skills-75224e3c", "reviewer/./"), " Reviewer ", " Review pull requests carefully. ", " code-review ", "CODE-REVIEW", "security")
 
 		require.NoError(t, err)
 		assert.Equal(t, "anthropics-skills-skills-75224e3c:reviewer", got.ID())
@@ -27,6 +27,7 @@ func TestNewSkill(t *testing.T) {
 		assert.Equal(t, "anthropics-skills-skills-75224e3c", got.SourceID())
 		assert.Equal(t, "Reviewer", got.Name())
 		assert.Equal(t, "Review pull requests carefully.", got.Description())
+		assert.Equal(t, []string{"code-review", "security"}, got.Tags())
 		assert.Equal(t, "reviewer", got.RelativePath())
 		assert.Equal(t, "reviewer/SKILL.md", got.FilePath())
 	})

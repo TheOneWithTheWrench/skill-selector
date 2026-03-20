@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func parseGitHubTreeSource(raw string) (Source, error) {
+func parseGitHubSource(raw string) (Source, error) {
 	normalizedURL := strings.TrimSpace(raw)
 	if normalizedURL == "" {
 		return Source{}, fmt.Errorf("source url required")
@@ -29,33 +29,49 @@ func parseGitHubTreeSource(raw string) (Source, error) {
 	}
 
 	segments := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
-	if len(segments) < 4 {
-		return Source{}, fmt.Errorf("source url must be a GitHub tree url: %q", normalizedURL)
-	}
-
-	if segments[2] != "tree" {
-		return Source{}, fmt.Errorf("source url must contain /tree/: %q", normalizedURL)
+	if len(segments) < 2 {
+		return Source{}, fmt.Errorf("source url must be a GitHub repo or tree url: %q", normalizedURL)
 	}
 
 	owner := segments[0]
-	repo := segments[1]
-	ref := segments[3]
-	if owner == "" || repo == "" || ref == "" {
-		return Source{}, fmt.Errorf("source url is missing owner, repo, or ref: %q", normalizedURL)
+	repo := strings.TrimSuffix(segments[1], ".git")
+	if owner == "" || repo == "" {
+		return Source{}, fmt.Errorf("source url is missing owner or repo: %q", normalizedURL)
 	}
 
+	ref := ""
 	subpath := ""
-	if len(segments) > 4 {
-		subpath = path.Clean(strings.Join(segments[4:], "/"))
-		if subpath == "." {
-			subpath = ""
+	switch {
+	case len(segments) == 2:
+		// GitHub repo root. We intentionally mirror the default branch by cloning
+		// without an explicit branch and scanning the repository root.
+	case len(segments) >= 4 && segments[2] == "tree":
+		ref = segments[3]
+		if ref == "" {
+			return Source{}, fmt.Errorf("source url is missing ref: %q", normalizedURL)
+		}
+		if len(segments) > 4 {
+			subpath = path.Clean(strings.Join(segments[4:], "/"))
+			if subpath == "." {
+				subpath = ""
+			}
+		}
+	default:
+		return Source{}, fmt.Errorf("source url must be a GitHub repo or tree url: %q", normalizedURL)
+	}
+
+	canonicalLocator := fmt.Sprintf("https://github.com/%s/%s", owner, repo)
+	if ref != "" {
+		canonicalLocator += "/tree/" + ref
+		if subpath != "" {
+			canonicalLocator += "/" + subpath
 		}
 	}
 
 	sourceID := newGitSourceID(owner, repo, ref, subpath)
 	cloneURL := fmt.Sprintf("https://github.com/%s/%s.git", owner, repo)
 
-	return newSource(sourceID, normalizedURL, cloneURL, ref, subpath)
+	return newSource(sourceID, canonicalLocator, cloneURL, ref, subpath)
 }
 
 func newGitSourceID(owner string, repo string, ref string, subpath string) string {

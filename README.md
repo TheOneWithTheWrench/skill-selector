@@ -9,7 +9,7 @@
 🧰 Skill Selector manages shared skills across multiple coding agents from one place.
 
 It lets you:
-- add upstream skill sources from GitHub tree URLs
+- add upstream skill sources from GitHub repo or tree URLs
 - build a local catalog of discovered skills
 - save named profiles of selected skills
 - sync those profiles into supported agents with symlinks
@@ -25,7 +25,7 @@ It lets you:
 
 ## 🧠 Mental Model
 
-- `Source` - an upstream skill source, currently a GitHub tree URL
+- `Source` - an upstream skill source, currently a GitHub repo or tree URL
 - `Catalog` - the local inventory of discovered skills from refreshed sources
 - `Profile` - a named saved selection of skills
 - `Sync` - the real installed symlinks in agent skill directories
@@ -92,7 +92,13 @@ Add a source:
 
 ```bash
 skill-selector source add https://github.com/anthropics/skills/tree/main/skills
+skill-selector source add https://github.com/ComposioHQ/awesome-claude-skills
 ```
+
+Tip:
+- use a repo URL when you want broad best-effort discovery
+- use a GitHub tree URL when you want precise control over exactly which folder gets scanned
+- for large or oddly structured repos, tree URLs are the recommended path
 
 List configured sources:
 

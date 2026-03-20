@@ -86,7 +86,7 @@ func (m *Model) beginAddSource() {
 
 	m.sourceInputActive = true
 	m.sourceInputValue = ""
-	m.statusMessage = "Paste a GitHub tree URL and press enter"
+	m.statusMessage = "Paste a GitHub repo or tree URL and press enter • tree URLs are best for precision"
 }
 
 func (m *Model) startAddSource() tea.Cmd {
