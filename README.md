@@ -6,35 +6,11 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/TheOneWithTheWrench/skill-selector)](https://go.dev/doc/devel/release)
 [![Go Report Card](https://goreportcard.com/badge/github.com/TheOneWithTheWrench/skill-selector)](https://goreportcard.com/report/github.com/TheOneWithTheWrench/skill-selector)
 
-🧰 Skill Selector manages shared skills across multiple coding agents from one place.
+🧰 Skill Selector manages shared skills across supported coding agents from one place.
 
-It lets you:
-- add upstream skill sources from GitHub repo or tree URLs
-- build a local catalog of discovered skills
-- save named profiles of selected skills
-- sync those profiles into supported agents with symlinks
-- work from either a TUI or a CLI on top of the same core
-
-## ✨ Supported Agents (But adding more is easy)
-
-- Ampcode
-- Claude
-- Codex
-- Cursor
-- Opencode
-
-## 🧠 Mental Model
-
-- `Source` - an upstream skill source, currently a GitHub repo or tree URL
-- `Catalog` - the local inventory of discovered skills from refreshed sources
-- `Profile` - a named saved selection of skills
-- `Sync` - the real installed symlinks in agent skill directories
-
-High-level flow:
-1. add one or more sources
-2. refresh to build the catalog
-3. select skills into a profile
-4. sync that profile into your agents
+<p align="center">
+  <img src="assets/skill-selector-tui.png" alt="Skill Selector TUI screenshot" width="100%" />
+</p>
 
 ## 🚀 Install
 
@@ -50,7 +26,7 @@ From this repo:
 go install ./cmd/skill-selector
 ```
 
-Or run it directly without installing:
+Run without installing:
 
 ```bash
 go run ./cmd/skill-selector
@@ -61,6 +37,19 @@ If your Go bin directory is on `PATH`, the installed command is:
 ```bash
 skill-selector
 ```
+
+## 🔄 Quick Start
+
+```bash
+skill-selector source add https://github.com/anthropics/skills/tree/main/skills
+skill-selector refresh
+skill-selector
+```
+
+Tip:
+- use a repo URL for broad best-effort discovery
+- use a GitHub tree URL when you want precise control over exactly which folder gets scanned
+- for large or oddly structured repos, tree URLs are the recommended path
 
 ## 🎛️ TUI
 
@@ -76,138 +65,78 @@ You can also open it explicitly:
 skill-selector tui
 ```
 
-The main sections are:
-- `Sources` - manage upstream sources and drill into one source's skills
+Main sections:
+- `Sources` - add sources and drill into one source's skills
 - `Catalog` - toggle skills for the active profile
 - `Profiles` - create, rename, remove, and activate profiles
 - `Status` - inspect runtime paths and current sync state
 
+Draft changes stay in the TUI until you sync.
+
 ## 💻 CLI
 
-Use the CLI when you want direct commands, scripting, or quick inspection.
-
-### Sources
-
-Add a source:
+Use the CLI when you want scripting, automation, or quick inspection.
 
 ```bash
+# Sources
 skill-selector source add https://github.com/anthropics/skills/tree/main/skills
 skill-selector source add https://github.com/ComposioHQ/awesome-claude-skills
-```
-
-Tip:
-- use a repo URL when you want broad best-effort discovery
-- use a GitHub tree URL when you want precise control over exactly which folder gets scanned
-- for large or oddly structured repos, tree URLs are the recommended path
-
-List configured sources:
-
-```bash
 skill-selector source list
-```
-
-Remove a source by locator or source ID:
-
-```bash
 skill-selector source remove https://github.com/anthropics/skills/tree/main/skills
 skill-selector source remove anthropics-skills-skills-75224e3c
-```
 
-### Refresh
-
-Refresh all source mirrors and rebuild the local catalog:
-
-```bash
+# Refresh / catalog
 skill-selector refresh
-```
-
-Alias:
-
-```bash
 skill-selector pull
-```
-
-### Catalog
-
-List discovered skills:
-
-```bash
 skill-selector catalog list
-```
 
-### Profiles
-
-List profiles:
-
-```bash
+# Profiles
 skill-selector profile list
-```
-
-Create a profile:
-
-```bash
 skill-selector profile create reviewer
-```
-
-Rename a profile:
-
-```bash
 skill-selector profile rename reviewer backend-reviewer
-```
-
-Remove an inactive profile:
-
-```bash
 skill-selector profile remove backend-reviewer
-```
-
-Activate a profile and sync it immediately:
-
-```bash
 skill-selector profile switch reviewer
-```
 
-### Sync
-
-Sync one or more explicit skill identities:
-
-```bash
+# Sync
 skill-selector sync source-id:reviewer
 skill-selector sync source-id:path/to/skill
-```
-
-Sync the full catalog:
-
-```bash
 skill-selector sync --all
-```
-
-Inspect persisted sync manifests:
-
-```bash
 skill-selector sync status
-```
-
-Clear all managed synced skills:
-
-```bash
 skill-selector sync clear
 ```
 
-## 🔄 Typical Workflow
-
-Example setup:
+For the full command tree:
 
 ```bash
-skill-selector source add https://github.com/anthropics/skills/tree/main/skills
-skill-selector refresh
-skill-selector
+skill-selector --help
 ```
 
-Then in the TUI:
-- choose or create a profile
-- toggle the skills you want
-- sync them into your agents
+## 🧠 Mental Model
+
+- `Source` - an upstream skill source, currently a GitHub repo or tree URL
+- `Catalog` - the local inventory of discovered skills from refreshed sources
+- `Profile` - a named saved selection of skills
+- `Sync` - the real installed symlinks in agent skill directories
+
+High-level flow:
+1. add one or more sources
+2. refresh to build the catalog
+3. select skills into a profile
+4. sync that profile into your agents
+
+Important behavior:
+- quitting the TUI drops unsynced draft changes
+- activating a profile syncs that profile's saved selection into supported agents
+- sync only manages files it owns; unrelated files in agent directories are left alone
+- removing a source also removes that source's skills from saved profiles
+
+## ✨ Supported Agents
+
+- Ampcode
+- Claude
+- Codex
+- Cursor
+- Opencode
 
 ## 📁 Runtime Data
 
@@ -220,6 +149,5 @@ That includes sources, profiles, sync manifests, and the local catalog cache.
 
 ## 🤝 Notes
 
-- `skill-selector --help` shows the full command tree
 - the CLI and TUI share the same core behavior
-- the project intentionally keeps the core independent from Cobra and Bubble Tea
+- the project keeps the core independent from Cobra and Bubble Tea
